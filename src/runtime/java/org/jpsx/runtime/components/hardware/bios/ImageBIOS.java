@@ -18,6 +18,7 @@
  */
 package org.jpsx.runtime.components.hardware.bios;
 
+import org.apache.log4j.Logger;
 import org.jpsx.api.InvalidConfigurationException;
 import org.jpsx.api.components.core.addressspace.AddressSpace;
 import org.jpsx.runtime.JPSXComponent;
@@ -29,6 +30,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * ImageBIOS is a simple component which maps
@@ -37,9 +40,12 @@ import java.nio.channels.FileChannel;
  * a real PSX BIOS image, though it need not be
  */
 public class ImageBIOS extends JPSXComponent {
+    private static final Logger log = Logger.getLogger("ImageBIOS");
     private static final int ADDRESS = 0xbfc00000;
-    // todo get size from file!
     private static final int SIZE = 0x80000;
+
+    private static Path biosFolder = Paths.get(".", "bios");
+    private static String biosFileName = "bios.bin";
 
     public ImageBIOS() {
         super("JPSX BIOS using ROM image");
@@ -55,10 +61,12 @@ public class ImageBIOS extends JPSXComponent {
     }
 
     private void populateMemory() {
-        String filename = "bios.bin";
-        //MiscUtil.consoleOut( "Loading bios " + filename + "..." );
+        String biosLoc = ".";
         try {
-            RandomAccessFile in = new RandomAccessFile(filename, "r");
+            biosLoc = Paths.get(biosFolder.toAbsolutePath().toString(), biosFileName).
+                    toAbsolutePath().toString();
+            log.info("Loading bios "+biosLoc+" ... ");
+            RandomAccessFile in = new RandomAccessFile(biosLoc, "r");
             AddressSpace.ResolveResult rr = new AddressSpace.ResolveResult();
             AddressSpace addressSpace = CoreComponentConnections.ADDRESS_SPACE.resolve();
             addressSpace.resolve(ADDRESS, SIZE, true, rr);
@@ -70,13 +78,13 @@ public class ImageBIOS extends JPSXComponent {
             bytebuf.clear();
 
             if (SIZE != channel.read(bytebuf, 0)) {
-                throw new InvalidConfigurationException("BIOS image " + filename + " is not the correct size");
+                throw new InvalidConfigurationException("BIOS image " + biosLoc + " is not the correct size");
             }
             intbuf.rewind();
             intbuf.get(rr.mem);
             channel.close();
         } catch (IOException e) {
-            throw new InvalidConfigurationException("Can't load BIOS image " + filename, e);
+            throw new InvalidConfigurationException("Can't load BIOS image " + biosLoc, e);
         }
     }
 }

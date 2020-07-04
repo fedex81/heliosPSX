@@ -22,7 +22,7 @@
 
     <!-- default machine -->
     <machine id="default">
-        <include refid="named-image"/>
+        <include refid="named-image-no-console"/>
     </machine>
 
     <!-- same as default machine, but uses lwjgl display -->

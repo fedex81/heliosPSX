@@ -26,8 +26,8 @@ import org.jpsx.api.components.core.scheduler.Quartz;
 import org.jpsx.runtime.JPSXComponent;
 import org.jpsx.runtime.RuntimeConnections;
 import org.jpsx.runtime.components.core.CoreComponentConnections;
-import org.jpsx.runtime.debugcomponents.core.DebugAddressSpaceImpl;
 import org.jpsx.runtime.components.hardware.gte.GTE;
+import org.jpsx.runtime.debugcomponents.core.DebugAddressSpaceImpl;
 import org.jpsx.runtime.util.MiscUtil;
 
 import java.io.*;
@@ -65,7 +65,7 @@ public class Console extends JPSXComponent implements Runnable, CPUListener {
         System.out.println("This program comes with ABSOLUTELY NO WARRANTY; type 'l' for details.");
         System.out.println("This is free software, and you are welcome to redistribute it");
         System.out.println("under certain conditions; type 'l' for details.");
-        System.out.println();
+        System.out.println("\nPress 'g' to continue");
         dumpMainRegs();
 
         int lastDumpAddress = 0;

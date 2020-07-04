@@ -4,8 +4,12 @@ rips
 .idea
 classes
 jpsx.log
+jpsx.ipr
+jpsx.iws
 target
 external/bcel-5.1/bin
 *.iml
 ship/
 dist/
+bios/
+out/
