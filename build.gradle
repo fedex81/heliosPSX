@@ -1,0 +1,162 @@
+/*
+ * build
+ * Copyright (c) 2018-2019 Federico Berti
+ * Last modified: 07/10/19 13:09
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+def dateString = getDate()
+
+//version dateString
+version dateString + '-SNAPSHOT'
+def jarNameHead = rootProject.name + "-" + version
+
+
+apply plugin: 'java'
+
+sourceCompatibility = 1.7
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs 'src/api/java/'
+            srcDirs 'src/bootstrap/java/'
+            srcDirs 'src/runtime/java/'
+            srcDirs 'external/bcel-5.1/src/java/'
+        }
+    }
+}
+
+dependencies {
+    // https://mvnrepository.com/artifact/log4j/log4j
+    compile group: 'log4j', name: 'log4j', version: '1.2.17'
+    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
+    // https://mvnrepository.com/artifact/net.java.jinput/jinput
+    compile group: 'net.java.jinput', name: 'jinput', version: '2.0.9'
+    // https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core
+//    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.0'
+    // https://mvnrepository.com/artifact/com.google.guava/guava
+    compile group: 'com.google.guava', name: 'guava', version: '28.2-jre'
+    // https://mvnrepository.com/artifact/org.digitalmediaserver/cuelib-core
+    compile group: 'org.digitalmediaserver', name: 'cuelib-core', version: '2.0.0'
+//    compile group: 'org.jctools', name: 'jctools-core', version: '3.0.0'
+
+    testCompile group: 'junit', name: 'junit', version: '4.13'
+    // https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.6.2'
+    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.6.2'
+}
+
+def getDate() {
+    String date = new Date().format('yyMMdd')
+    date.substring(0,2) + "." + date.substring(2)
+}
+
+//create a single Jar with all dependencies
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Implementation-Title': 'jpsx',
+                'Implementation-Version': version,
+                'Main-Class': 'org.jpsx.bootstrap.JPSXLauncher'
+    }
+    baseName = project.name + "-all"//+ version
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    from {
+        ["README.md", "jpsx.xml","log4j.properties"]
+    }
+    with jar
+    doLast {
+        println("Creating fatJar in folder: " + destinationDir)
+    }
+}
+
+task copyRes {
+    copy {
+        from {
+            ["README.md", "jpsx.xml","log4j.properties"]
+        }
+        into "$buildDir/packageDir"
+    }
+    copy {
+        from configurations.runtime
+        into "$buildDir/packageDir/lib"
+    }
+}
+
+jar {
+    manifest {
+        attributes 'Implementation-Title': 'JPSX',
+                   'Implementation-Version': version,
+                   'Main-Class': 'org.jpsx.bootstrap.JPSXLauncher',
+                   'Class-Path': configurations.compile.collect { "lib/" + it.getName() }.join(' ')
+    }
+    archivesBaseName = rootProject.name
+    destinationDir = file("$buildDir/packageDir")
+    doLast {
+        println("Creating jar in folder: " + destinationDir)
+    }
+}
+
+
+task packageDistribution(type: Zip) {
+    dependsOn "jar", "copyRes", "writeToFile"
+    archiveName = jarNameHead + ".zip"
+    destinationDir = file("$buildDir/dist")
+
+    from "$buildDir/packageDir"
+    doLast {
+        println("Creating package: " + archiveName +
+                ", folder: " + destinationDir)
+    }
+}
+
+task writeToFile {
+    String jarName = jarNameHead + ".jar"
+    // sample list.(you already have it as extra.files.collect { file -> file.name })
+    List<String> sampleBase = [ "java", "-noverify",
+                                "-XX:-DontCompileHugeMethods -XX:-OmitStackTraceInFastThrow",
+                                "-XX:AutoBoxCacheMax=65536",
+                                "-Dlog4j.configurationFile=./log4j.properties",
+                                "-Djinput.enable=true -Djinput.native.location=lib",
+                            "-jar", "$jarName"] as String[]
+    List<String> sampleUx = sampleBase.clone()
+    sampleUx.add("\"\$@\"" + "\n")
+    List<String> sampleWin = sampleBase.clone()
+    sampleWin.add("\"%1\"" + "\n")
+    // create the folders if it does not exist.(otherwise it will throw exception)
+    File extraFolder = new File( "${buildDir}/packageDir")
+    if( !extraFolder.exists() ) {
+        extraFolder.mkdirs()
+    }
+    // create the file and write text to it.
+    new File("${buildDir}/packageDir/launcher.sh").text = sampleUx.join (" ")
+    new File("${buildDir}/packageDir/launcher.bat").text = sampleWin.join (" ")
+}
+
+test {
+    testLogging {
+        afterSuite { desc, result ->
+            if (!desc.parent) { // will match the outermost suite
+                println "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+            }
+        }
+    }
+}

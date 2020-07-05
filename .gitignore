@@ -13,3 +13,5 @@ ship/
 dist/
 bios/
 out/
+/build/
+.gradle/
