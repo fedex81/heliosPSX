@@ -27,7 +27,7 @@ def jarNameHead = rootProject.name + "-" + version
 
 apply plugin: 'java'
 
-sourceCompatibility = 1.7
+sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
@@ -39,7 +39,6 @@ sourceSets {
             srcDirs 'src/api/java/'
             srcDirs 'src/bootstrap/java/'
             srcDirs 'src/runtime/java/'
-            srcDirs 'external/bcel-5.1/src/java/'
         }
     }
 }
@@ -51,13 +50,12 @@ dependencies {
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
     // https://mvnrepository.com/artifact/net.java.jinput/jinput
     compile group: 'net.java.jinput', name: 'jinput', version: '2.0.9'
-    // https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core
-//    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.0'
     // https://mvnrepository.com/artifact/com.google.guava/guava
     compile group: 'com.google.guava', name: 'guava', version: '28.2-jre'
     // https://mvnrepository.com/artifact/org.digitalmediaserver/cuelib-core
     compile group: 'org.digitalmediaserver', name: 'cuelib-core', version: '2.0.0'
-//    compile group: 'org.jctools', name: 'jctools-core', version: '3.0.0'
+    // https://mvnrepository.com/artifact/org.apache.bcel/bcel
+    compile group: 'org.apache.bcel', name: 'bcel', version: '6.5.0'
 
     testCompile group: 'junit', name: 'junit', version: '4.13'
     // https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api
@@ -73,7 +71,7 @@ def getDate() {
 //create a single Jar with all dependencies
 task fatJar(type: Jar) {
     manifest {
-        attributes 'Implementation-Title': 'jpsx',
+        attributes 'Implementation-Title': 'JPSX',
                 'Implementation-Version': version,
                 'Main-Class': 'org.jpsx.bootstrap.JPSXLauncher'
     }
