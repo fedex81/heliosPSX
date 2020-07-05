@@ -40,6 +40,8 @@ import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
 import org.jpsx.runtime.util.CDUtil;
 import org.jpsx.runtime.util.MiscUtil;
 
+import static org.jpsx.api.components.hardware.cd.CDMedia.SECTOR_SIZE_BYTES;
+
 // todo return the correct thing for audio/no disc
 // todo filter!
 // todo end of file!
@@ -132,7 +134,7 @@ public class CD extends JPSXComponent implements MemoryMapped {
 
     private static boolean resultCleared;
 
-    private static int[] currentSector = new int[2352 / 4];
+    private static int[] currentSector = new int[SECTOR_SIZE_BYTES / 4];
     private static int currentSectorOffset;
     private static int currentSectorEnd;
 
@@ -1381,7 +1383,7 @@ public class CD extends JPSXComponent implements MemoryMapped {
             super("Sector read thread");
             for (int i = 0; i < SECTOR_BUFFERS; i++) {
                 sectorLocations[i] = new HeadLocation();
-                sectorBuffers[i] = new byte[2352];
+                sectorBuffers[i] = new byte[SECTOR_SIZE_BYTES];
             }
 
             setPriority(NORM_PRIORITY + 2);
@@ -1467,7 +1469,7 @@ public class CD extends JPSXComponent implements MemoryMapped {
             synchronized (CD.class) {
                 byte[] byteBuf = sectorBuffers[sectorBufferNextRead];
 
-                for (int i = 0; i < 2352 / 4; i++) {
+                for (int i = 0; i < SECTOR_SIZE_BYTES / 4; i++) {
                     currentSector[i] = ((((int) byteBuf[i * 4 + 3]) & 0xff) << 24) |
                             ((((int) byteBuf[i * 4 + 2]) & 0xff) << 16) |
                             ((((int) byteBuf[i * 4 + 1]) & 0xff) << 8) |
@@ -1607,7 +1609,7 @@ public class CD extends JPSXComponent implements MemoryMapped {
         if (rateLimit2Exceeded()) return false;
 
         if (cdAudioSink != null && cdAudioSink.isCDAudible()) {
-            boolean started = cdAudioSink.cdAudioData(sectorBuffer, 0, 2352);
+            boolean started = cdAudioSink.cdAudioData(sectorBuffer, 0, SECTOR_SIZE_BYTES);
             if (rateLimit1 || rateLimit2) {
                 if (started) {
                     if (!rateLimitEnabled) {

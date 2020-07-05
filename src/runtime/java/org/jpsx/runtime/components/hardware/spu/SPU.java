@@ -35,6 +35,8 @@ import org.jpsx.runtime.util.MiscUtil;
 
 import javax.sound.sampled.*;
 
+import static org.jpsx.api.components.hardware.cd.CDMedia.SECTOR_SIZE_BYTES;
+
 // todo volume panning
 // bit of a mess! needs some work.
 //
@@ -98,7 +100,7 @@ public class SPU extends SingletonJPSXComponent implements MemoryMapped, CDAudio
     private static final int BUFFER_SAMPLES = (SAMPLE_RATE * BUFFER_MS) / 1000;
 
     private static final int CD_BUFFER_SAMPLES = SAMPLE_RATE / 2;
-    private static final byte[] cdAudioBuffer = new byte[2352 * 4 * 4]; // maximum we're likely to get!
+    private static final byte[] cdAudioBuffer = new byte[SECTOR_SIZE_BYTES * 4 * 4]; // maximum we're likely to get!
     private static SourceDataLine cdline;
     private static int cdlineFreq;
     private static FloatControl cdPanControl;

@@ -19,8 +19,24 @@
 package org.jpsx.api.components.hardware.cd;
 
 public interface CDMedia {
+
+    int SECTOR_SIZE_BYTES = 2352;
+
     public enum TrackType {
-        UNKNOWN, MODE2_2352, AUDIO
+        UNKNOWN, MODE2_2352, MODE1_2352, AUDIO;
+
+        static TrackType[] values = TrackType.values();
+
+        public static TrackType getTrackType(String name) {
+            name = name.replace("/", "_"); //MODE2/2352
+            for (int i = 0; i < values.length; i++) {
+                TrackType tt = values[i];
+                if (name.equalsIgnoreCase(tt.name())) {
+                    return tt;
+                }
+            }
+            return null;
+        }
     }
 
     int getFirstTrack();

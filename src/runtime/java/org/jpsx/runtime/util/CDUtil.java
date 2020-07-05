@@ -21,6 +21,8 @@ package org.jpsx.runtime.util;
 import org.jpsx.api.components.hardware.cd.CDMedia;
 import org.jpsx.api.components.hardware.cd.MediaException;
 
+import static org.jpsx.api.components.hardware.cd.CDMedia.SECTOR_SIZE_BYTES;
+
 public class CDUtil {
     // flags ORed together
     public static final int MEDIA_PRESENT = 0x0001;
@@ -48,13 +50,13 @@ public class CDUtil {
                 CDMedia.TrackType tt = media.getTrackType(i);
                 if (tt == CDMedia.TrackType.AUDIO) {
                     rc |= MEDIA_HAS_AUDIO;
-                } else if (tt == CDMedia.TrackType.MODE2_2352) {
+                } else if (tt == CDMedia.TrackType.MODE2_2352 || tt == CDMedia.TrackType.MODE1_2352) {
                     rc |= MEDIA_HAS_DATA;
                 }
             }
             if (0 != (rc & MEDIA_HAS_DATA)) {
                 try {
-                    int[] sector = new int[2352 / 4];
+                    int[] sector = new int[SECTOR_SIZE_BYTES / 4];
                     media.readSector(4, sector);
                     int countryCode = (sector[0x15] & 0xff);
                     if (countryCode == 'E') {
@@ -66,6 +68,45 @@ public class CDUtil {
             }
         }
         return rc;
+    }
+
+
+    public static int toMSF(int sector) {
+        int f = sector % 75;
+        sector /= 75;
+        int s = sector % 60;
+        sector /= 60;
+        int m = sector;
+        return (CDUtil.toBCD(m) << 16) | (CDUtil.toBCD(s) << 8) | CDUtil.toBCD(f);
+    }
+
+    public static String printMSF(int msf) {
+        int m = (msf & 0xff0000) >> 16;
+        int s = (msf & 0xff00) >> 8;
+        int f = msf & 0xff;
+        return MiscUtil.toHex(m, 2) + ":" + MiscUtil.toHex(s, 2) + ":" + MiscUtil.toHex(f, 2);
+    }
+
+    static int readNumber(String s) {
+        // read a two digit number
+        int rc = 0;
+        s = s.trim();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (!Character.isDigit(c)) break;
+            rc = rc * 10 + (c - '0');
+        }
+        return rc;
+    }
+
+    static int parseMSFStringAsLBA(String msf) {
+        msf = msf.trim();
+        int c1 = msf.indexOf(':');
+        int c2 = msf.indexOf(':', c1 + 1);
+        int m = readNumber(msf.substring(0, c1));
+        int s = readNumber(msf.substring(c1 + 1, c2));
+        int f = readNumber(msf.substring(c2 + 1));
+        return ((m * 60) + s) * 75 + f;
     }
 
     public static int toMSF(int m, int s, int f) {
