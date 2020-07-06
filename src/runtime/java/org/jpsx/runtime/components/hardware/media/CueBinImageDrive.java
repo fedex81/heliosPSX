@@ -31,17 +31,20 @@ import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
 import org.jpsx.runtime.util.CDUtil;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.jpsx.api.components.hardware.cd.CDMedia.TrackType.UNKNOWN;
+import static org.jpsx.runtime.util.CDUtil.toMSF;
 
 public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive {
     public static final String PROPERTY_IMAGE_FILE = "image";
 
     private static final String CATEGORY = "CDImage";
     private static final Logger log = Logger.getLogger(CATEGORY);
-    private static final String DEFAULT_CUE_FILE = "rips/wipeoutxl.cue";
+    private static final String DEFAULT_CUE_FILE =
+            "rips/wipeoutxl.cue";
+    //            "rips/granturismo.cue";
+//            "rips/microv3.cue";
+    private static final int MAX_TRACKS = 100; //0-99
     private CDMedia currentMedia;
 
     private boolean refreshed = false;
@@ -72,12 +75,16 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
         currentMedia = CueBinImageMedia.create(cueFilename);
     }
 
+    public void refreshMedia(String cueFile) {
+        currentMedia = CueBinImageMedia.create(cueFile);
+    }
+
     private static class CueBinImageMedia implements CDMedia {
         int first;
         int last;
         CueSheet cueSheet;
-        List<Integer> msfList = new ArrayList<Integer>(20);
-        List<TrackType> trackTypeList = new ArrayList<TrackType>(20);
+        int[] msfList = new int[MAX_TRACKS];
+        TrackType[] trackTypeList = new TrackType[MAX_TRACKS];
         byte[] byteBuf = new byte[SECTOR_SIZE_BYTES];
         RandomAccessFile binFile;
 
@@ -85,7 +92,7 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
         }
 
         public TrackType getTrackType(int track) {
-            return trackTypeList.get(track);
+            return trackTypeList[track];
         }
 
 
@@ -98,7 +105,7 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
         }
 
         public int getTrackMSF(int trackIndex) {
-            return msfList.get(trackIndex);
+            return msfList[trackIndex];
         }
 
         public static CueBinImageMedia create(String cueFilename) {
@@ -118,26 +125,24 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
                 cueSheet = CueParser.parse(reader);
                 dataFile = getFirstDataFile(cueFile, cueSheet);
                 List<TrackData> l = cueSheet.getAllTrackData();
-                trackTypeList.add(UNKNOWN); //track 0 doesn't exist
-                msfList.add(0); //add later
                 int offset = 150;
-                last = l.size() - 1;
-                first = last;
+                last = l.size();
+                first = -1;
                 for (int i = 0; i < l.size(); i++) {
                     TrackData td = l.get(i);
                     TrackType tt = TrackType.getTrackType(td.getDataType());
                     if (tt != null) {
-                        trackTypeList.add(td.getNumber(), tt);
+                        trackTypeList[td.getNumber()] = tt;
                         int sectorVal = td.getIndex(1).getPosition().getTotalFrames() + offset;
-                        msfList.add(td.getNumber(), CDUtil.toMSF(sectorVal));
-                        first = first > td.getNumber() ? td.getNumber() : first;
+                        msfList[td.getNumber()] = toMSF(sectorVal);
+                        first = first < 0 ? td.getNumber() : first;
                     } else {
                         log.warn("Unable to parse track: " + td);
                     }
                 }
+//                logTracks(cueFile, this);
                 binFile = new RandomAccessFile(dataFile, "r");
-                msfList.set(0, CDUtil.toMSF(offset + (int) (binFile.length() / (long) SECTOR_SIZE_BYTES)));
-//                logTracks();
+                msfList[0] = toMSF(offset + (int) (binFile.length() / (long) SECTOR_SIZE_BYTES));
             } catch (IOException e) {
                 log.warn("Unable to open BIN/CUE file " + cueFilename + ": " + e.getMessage());
                 return false;
@@ -176,13 +181,12 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
             }
         }
 
-        private void logTracks() {
-            for (int i = first; i <= last; i++) {
-                log.info("track " + i + " " + CDUtil.printMSF(msfList.get(i)));
+        private static void logTracks(File cueFile, CDMedia media) {
+            for (int i = media.getFirstTrack(); i <= media.getLastTrack(); i++) {
+                System.out.printf("Track %2d, %10s, MSF: %s\n", i, media.getTrackType(i),
+                        CDUtil.printMSF(media.getTrackMSF(i)));
             }
-            log.info("end " + CDUtil.printMSF(msfList.get(0)));
+            System.out.println("End MSF: " + CDUtil.printMSF(media.getTrackMSF(0)));
         }
-
     }
-
 }

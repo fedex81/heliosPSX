@@ -87,28 +87,6 @@ public class CDUtil {
         return MiscUtil.toHex(m, 2) + ":" + MiscUtil.toHex(s, 2) + ":" + MiscUtil.toHex(f, 2);
     }
 
-    static int readNumber(String s) {
-        // read a two digit number
-        int rc = 0;
-        s = s.trim();
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-            if (!Character.isDigit(c)) break;
-            rc = rc * 10 + (c - '0');
-        }
-        return rc;
-    }
-
-    static int parseMSFStringAsLBA(String msf) {
-        msf = msf.trim();
-        int c1 = msf.indexOf(':');
-        int c2 = msf.indexOf(':', c1 + 1);
-        int m = readNumber(msf.substring(0, c1));
-        int s = readNumber(msf.substring(c1 + 1, c2));
-        int f = readNumber(msf.substring(c2 + 1));
-        return ((m * 60) + s) * 75 + f;
-    }
-
     public static int toMSF(int m, int s, int f) {
         return (toBCD(m) << 16) | (toBCD(s) << 8) | toBCD(f);
     }
