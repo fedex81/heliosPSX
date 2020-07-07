@@ -24,12 +24,13 @@ import com.google.common.collect.Maps;
 import net.java.games.input.*;
 import org.apache.log4j.Logger;
 import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
-import org.jpsx.runtime.components.hardware.sio.StandardController;
+import org.jpsx.runtime.components.hardware.sio.AWTKeyboardController;
 import org.jpsx.runtime.components.hardware.sio.input.InputProvider;
 import org.jpsx.runtime.components.hardware.sio.input.JoypadProvider;
 import org.jpsx.runtime.components.hardware.sio.input.JoypadProvider.JoypadAction;
 import org.jpsx.runtime.components.hardware.sio.input.JoypadProvider.JoypadButton;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,7 +42,13 @@ import java.util.stream.Collectors;
 import static java.lang.Thread.sleep;
 import static net.java.games.input.Component.Identifier.Button.Axis;
 
-public class JinputGamepadInputProvider extends StandardController implements InputProvider {
+/**
+ * Enables joypad (if present and supported) and keyboard controls.
+ * Note that keyboard controls are always active, even when using a joypad!
+ * <p>
+ * TODO support 2 players
+ */
+public class JinputGamepadInputProvider extends AWTKeyboardController implements InputProvider {
 
     private static Logger LOG = Logger.getLogger(JinputGamepadInputProvider.class);
 
@@ -52,7 +59,6 @@ public class JinputGamepadInputProvider extends StandardController implements In
     private volatile boolean stop = false;
     private String pov = Axis.POV.getName();
 
-    private static InputProvider INSTANCE = NO_OP;
     private static final int AXIS_p1 = 1;
     private static final int AXIS_0 = 0;
     private static final int AXIS_m1 = -1;
@@ -65,8 +71,21 @@ public class JinputGamepadInputProvider extends StandardController implements In
                     PlayerNumber.P2, KEYBOARD_CONTROLLER
             ));
 
+    static final Map<JoypadButton, Integer> pad1Mapping = ImmutableMap.<JoypadButton, Integer>builder()
+            .put(JoypadButton.U, PADLup)
+            .put(JoypadButton.D, PADLdown)
+            .put(JoypadButton.L, PADLleft)
+            .put(JoypadButton.R, PADLright)
+            .put(JoypadButton.TRIANGLE, PADRup)
+            .put(JoypadButton.CIRCLE, PADRright)
+            .put(JoypadButton.CROSS, PADRdown)
+            .put(JoypadButton.SQUARE, PADRleft)
+            .put(JoypadButton.S, PADstart)
+            .put(JoypadButton.SELECT, PADselect)
+            .build();
+
     public JinputGamepadInputProvider() {
-        super("JPSX JInput Pad Controller");
+        super("JPSX JInput Pad and AWT Keyboard Controller");
         controllerNames = new ArrayList<>(DEFAULT_CONTROLLERS);
         controllers = new ArrayList<>();
         initProvider();
@@ -75,22 +94,17 @@ public class JinputGamepadInputProvider extends StandardController implements In
     private void initProvider() {
         InputProvider.bootstrap();
         List<Controller> list = detectControllers();
-        InputProvider provider = NO_OP;
         if (!list.isEmpty()) {
-            provider = createOrGetInstance(this, list);
+            setupOnce(this, list);
         } else {
             LOG.info("Unable to find a controller");
         }
     }
 
-    private static InputProvider createOrGetInstance(JinputGamepadInputProvider g, List<Controller> controllers) {
-        if (INSTANCE == NO_OP) {
-            g.controllerNames.addAll(controllers.stream().map(Controller::getName).collect(Collectors.toList()));
-            g.controllers = controllers;
-            executorService.submit(g.inputRunnable());
-            INSTANCE = g;
-        }
-        return INSTANCE;
+    private static void setupOnce(JinputGamepadInputProvider g, List<Controller> controllers) {
+        g.controllerNames.addAll(controllers.stream().map(Controller::getName).collect(Collectors.toList()));
+        g.controllers = controllers;
+        executorService.submit(g.inputRunnable());
     }
 
     @Override
@@ -126,8 +140,6 @@ public class JinputGamepadInputProvider extends StandardController implements In
         };
     }
 
-    private boolean resetDirections = false;
-
     @Override
     public void handleEvents() {
         for (Controller controller : controllers) {
@@ -139,12 +151,11 @@ public class JinputGamepadInputProvider extends StandardController implements In
             int count = 0;
             for (Map.Entry<PlayerNumber, String> entry : playerControllerMap.entrySet()) {
                 PlayerNumber player = entry.getKey();
-                if (player == PlayerNumber.P2) { //hack
+                if (player == PlayerNumber.P2) { //TODO hack
                     if (!ctrlName.equalsIgnoreCase(entry.getValue())) {
                         continue;
                     }
                 }
-                resetDirections = true; //joypadProvider.hasDirectionPressed(player);
                 EventQueue eventQueue = controller.getEventQueue();
 
                 boolean hasEvents;
@@ -171,50 +182,15 @@ public class JinputGamepadInputProvider extends StandardController implements In
     }
 
     @Override
+    public void close() throws IOException {
+        executorService.shutdownNow();
+    }
+
+    @Override
     public List<String> getAvailableControllers() {
         return controllerNames;
     }
 
-    private void setDirectionOff(PlayerNumber playerNumber) {
-//        released(PADRdown);
-//        released(PADRup);
-//        released(PADRleft);
-//        released(PADRright);
-    }
-
-    /**
-     * up Controller state now: efff
-     * down Controller state now: bfff
-     * l Controller state now: 7fff
-     * r Controller state now: dfff
-     * triangle Controller state now: ffef
-     * circle  Controller state now: ffdf
-     * cross Controller state now: ffbf
-     * square Controller state now: ff7f
-     * l1 Controller state now: fffb
-     * l2 Controller state now: fffe
-     * r1 Controller state now: fff7
-     * r2 Controller state now: fffd
-     * start Controller state now: f7ff
-     * select
-     * <p>
-     * public static final int PADRup = (1 << 4);    //triangle
-     * public static final int PADRdown = (1 << 6);  //cross
-     * public static final int PADRleft = (1 << 7);  //square
-     * public static final int PADRright = (1 << 5); //circle
-     */
-    static Map<JoypadButton, Integer> pad1Mapping = ImmutableMap.<JoypadButton, Integer>builder()
-            .put(JoypadButton.U, PADLup)
-            .put(JoypadButton.D, PADLdown)
-            .put(JoypadButton.L, PADLleft)
-            .put(JoypadButton.R, PADLright)
-            .put(JoypadButton.TRIANGLE, PADRup)    //triangle
-            .put(JoypadButton.CIRCLE, PADRright) //circle
-            .put(JoypadButton.CROSS, PADRdown)  //cross
-            .put(JoypadButton.SQUARE, PADRleft)  //square
-            .put(JoypadButton.S, PADh)
-            .put(JoypadButton.SELECT, PADselect)
-            .build();
 
     private void setButtonAction(InputProvider.PlayerNumber number, JoypadButton button, JoypadAction action) {
         if (action == JoypadAction.PRESSED) {
@@ -276,14 +252,6 @@ public class JinputGamepadInputProvider extends StandardController implements In
 
         if (pov.equals(id.getName())) {
             JoypadAction action = JoypadAction.PRESSED;
-            //release directions previously pressed - only on the first event
-            boolean off = resetDirections || value == Component.POV.OFF;
-            if (off) {
-                setDirectionOff(playerNumber);
-                if (resetDirections) {
-                    resetDirections = false;
-                }
-            }
             if (value == Component.POV.DOWN) {
                 setButtonAction(playerNumber, JoypadButton.D, action);
             }

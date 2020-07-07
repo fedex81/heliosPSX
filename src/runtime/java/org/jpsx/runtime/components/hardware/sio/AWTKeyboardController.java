@@ -68,11 +68,15 @@ public class AWTKeyboardController extends StandardController implements KeyList
     }
 
     public AWTKeyboardController() {
-        this(DEF_CONTROLLER_0_MAPPING);
+        this("JPSX AWT Keyboard Controller", DEF_CONTROLLER_0_MAPPING);
     }
 
-    public AWTKeyboardController(KeyMapping mapping) {
-        super("JPSX AWT Keyboard Controller");
+    public AWTKeyboardController(String name) {
+        this(name, DEF_CONTROLLER_0_MAPPING);
+    }
+
+    public AWTKeyboardController(String name, KeyMapping mapping) {
+        super(name);
         this.mapping = mapping;
     }
 

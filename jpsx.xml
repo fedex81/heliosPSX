@@ -107,10 +107,10 @@
         <component id="spu" classname="org.jpsx.runtime.components.hardware.spu.SPU"/>
         <component id="cd" classname="org.jpsx.runtime.components.hardware.cd.CD"/>
         <component classname="org.jpsx.runtime.components.hardware.sio.SIO0"/>
-        <component classname="org.jpsx.runtime.components.hardware.sio.AWTKeyboardController"/>
+        <component classname="org.jpsx.runtime.components.hardware.sio.input.jinput.JinputGamepadInputProvider"/>
         <component classname="org.jpsx.runtime.components.hardware.gpu.GPU"/>
         <component id="display" classname="org.jpsx.runtime.components.hardware.gpu.AWTDisplay">
-            <property name="showBlitTime" value="true"/>
+            <property name="showBlitTime" value="false"/>
         </component>
         <component classname="org.jpsx.runtime.components.hardware.gpu.DefaultDisplayManager"/>
         <component classname="org.jpsx.runtime.components.hardware.mdec.MDEC"/>
