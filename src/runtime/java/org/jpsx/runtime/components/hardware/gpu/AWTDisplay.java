@@ -70,8 +70,8 @@ public class AWTDisplay extends JPSXComponent implements Display, KeyListener {
     private int MAX_X = 960;
     private int MAX_Y = 512;
 
-    private final int xres[] = new int[]{320, 640, 800, 960, 1024, 1280};
-    private final int yres[] = new int[]{256, 512, 600, 768, 768, 1024};
+    private final int xres[] = new int[]{320, 640, 800, 960, 1024, 1280, 1920};
+    private final int yres[] = new int[]{256, 512, 600, 768, 768, 1024, 1000};
 
     private static final int BLIT_TIME_COUNT = 100;
     private long blitTimeTotal;

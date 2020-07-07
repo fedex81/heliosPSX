@@ -18,9 +18,11 @@
  */
 package org.jpsx.runtime;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Properties;
 
-public abstract class JPSXComponent {
+public abstract class JPSXComponent implements Closeable {
     private Properties properties = new Properties();
     private String description;
 
@@ -33,6 +35,10 @@ public abstract class JPSXComponent {
     }
 
     public void init() {
+    }
+
+    @Override
+    public void close() throws IOException {
     }
 
     /**

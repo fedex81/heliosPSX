@@ -24,6 +24,7 @@ import org.jpsx.bootstrap.JPSXMachineLifecycle;
 import org.jpsx.bootstrap.configuration.ComponentDefinition;
 import org.jpsx.bootstrap.configuration.MachineDefinition;
 import org.jpsx.bootstrap.util.CollectionsFactory;
+import org.jpsx.runtime.util.MiscUtil;
 
 import java.util.Collections;
 import java.util.List;
@@ -143,6 +144,10 @@ public class JPSXMachineImpl implements JPSXMachine, JPSXMachineLifecycle {
 
     public void close() {
         log.info("Closing...\n");
+        for (JPSXComponent component : components) {
+            log.info("Closing: " + component.getDescription());
+            MiscUtil.closeQuietly(component, true);
+        }
         // todo something other than this!
         System.exit(0);
     }

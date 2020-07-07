@@ -158,7 +158,17 @@ public class SPU extends SingletonJPSXComponent implements MemoryMapped, CDAudio
 
     public void registerAddresses(AddressSpaceRegistrar registrar) {
         for (int i = 0; i < VOICES; i++) {
-            voices[i] = new Voice(i);
+            Voice v = new Voice(i);
+            voices[i] = v;
+
+            if (i == 0 && !v.line.isControlSupported(FloatControl.Type.SAMPLE_RATE)) {
+                log.warn("Rate control is NOT supported, hacking around it for now - might sound a bit weird until fixed properly");
+            }
+            if (i == 0 && !v.line.isControlSupported(FloatControl.Type.PAN)) {
+                // todo to fix this we need to make the voice stereo instead (identical channels)
+                log.warn("Pan control is NOT supported, voices will not be stereo positioned");
+            }
+
             int base = ADDR_VOICES + i * 0x10;
             registrar.registerWrite16Callback(base + VOICE_VOL_L, SPU.class, "writeVolLeft");
             registrar.registerWrite16Callback(base + VOICE_VOL_R, SPU.class, "writeVolRight");
@@ -630,17 +640,6 @@ public class SPU extends SingletonJPSXComponent implements MemoryMapped, CDAudio
             try {
                 line = (SourceDataLine) AudioSystem.getLine(desiredLine);
                 line.open();
-                if (line.isControlSupported(FloatControl.Type.SAMPLE_RATE)) {
-                    rateControl = (FloatControl) line.getControl(FloatControl.Type.SAMPLE_RATE);
-                } else {
-                    log.warn("Rate control is NOT supported, hacking around it for now - might sound a bit weird until fixed properly");
-                }
-                if (line.isControlSupported(FloatControl.Type.PAN)) {
-                    panControl = (FloatControl) line.getControl(FloatControl.Type.PAN);
-                } else {
-                    // todo to fix this we need to make the voice stereo instead (identical channels)
-                    log.warn("Pan control is NOT supported, voices will not be stereo positioned");
-                }
             } catch (Throwable t) {
                 throw new IllegalStateException("can't get line for voice " + index, t);
             }

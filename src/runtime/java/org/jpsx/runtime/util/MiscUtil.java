@@ -18,8 +18,10 @@
  */
 package org.jpsx.runtime.util;
 
-import org.jpsx.runtime.RuntimeConnections;
 import org.jpsx.runtime.components.core.CoreComponentConnections;
+
+import java.io.Closeable;
+import java.io.IOException;
 
 public class MiscUtil {
     public static String toHex(int val, int digits) {
@@ -44,6 +46,19 @@ public class MiscUtil {
             rc = (rc << 4) + val;
         }
         return rc;
+    }
+
+    public static void closeQuietly(Closeable obj, boolean verbose) {
+        if (obj == null) {
+            return;
+        }
+        try {
+            obj.close();
+        } catch (IOException e) {
+            if (verbose) {
+                System.out.println("Unable to close: " + obj.getClass().getSimpleName());
+            }
+        }
     }
 
     private static int assertionCounter;

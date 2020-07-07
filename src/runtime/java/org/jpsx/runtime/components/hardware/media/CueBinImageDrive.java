@@ -29,6 +29,7 @@ import org.jpsx.api.components.hardware.cd.MediaException;
 import org.jpsx.runtime.SingletonJPSXComponent;
 import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
 import org.jpsx.runtime.util.CDUtil;
+import org.jpsx.runtime.util.MiscUtil;
 
 import java.io.*;
 import java.util.List;
@@ -41,9 +42,9 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
     private static final String CATEGORY = "CDImage";
     private static final Logger log = Logger.getLogger(CATEGORY);
     private static final String DEFAULT_CUE_FILE =
-            "rips/wipeoutxl.cue";
-    //            "rips/granturismo.cue";
-//            "rips/microv3.cue";
+//            "rips/wipeoutxl.cue";
+            "rips/granturismo.cue";
+    //            "rips/microv3.cue";
     private static final int MAX_TRACKS = 100; //0-99
     private CDMedia currentMedia;
 
@@ -56,6 +57,11 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
     public void init() {
         super.init();
         HardwareComponentConnections.CD_DRIVE.set(this);
+    }
+
+    @Override
+    public void close() throws IOException {
+        MiscUtil.closeQuietly(currentMedia, true);
     }
 
     public CDMedia getCurrentMedia() {
@@ -76,6 +82,7 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
     }
 
     public void refreshMedia(String cueFile) {
+        MiscUtil.closeQuietly(currentMedia, true);
         currentMedia = CueBinImageMedia.create(cueFile);
     }
 
@@ -117,15 +124,16 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
         }
 
         private boolean parse(String cueFilename) {
-            LineNumberReader reader;
             File cueFile = new File(cueFilename);
             File dataFile;
-            try {
-                reader = new LineNumberReader(new FileReader(cueFile));
+            int offset = 150;
+            try (
+                    FileReader fr = new FileReader(cueFile);
+                    LineNumberReader reader = new LineNumberReader(fr);
+            ) {
                 cueSheet = CueParser.parse(reader);
                 dataFile = getFirstDataFile(cueFile, cueSheet);
                 List<TrackData> l = cueSheet.getAllTrackData();
-                int offset = 150;
                 last = l.size();
                 first = -1;
                 for (int i = 0; i < l.size(); i++) {
@@ -187,6 +195,11 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
                         CDUtil.printMSF(media.getTrackMSF(i)));
             }
             System.out.println("End MSF: " + CDUtil.printMSF(media.getTrackMSF(0)));
+        }
+
+        @Override
+        public void close() throws IOException {
+            MiscUtil.closeQuietly(binFile, true);
         }
     }
 }

@@ -18,7 +18,9 @@
  */
 package org.jpsx.api.components.hardware.cd;
 
-public interface CDMedia {
+import java.io.Closeable;
+
+public interface CDMedia extends Closeable {
 
     int SECTOR_SIZE_BYTES = 2352;
 
