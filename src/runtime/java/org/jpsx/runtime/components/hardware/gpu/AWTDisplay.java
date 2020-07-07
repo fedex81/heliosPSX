@@ -23,8 +23,8 @@ import org.jpsx.api.components.hardware.gpu.Display;
 import org.jpsx.api.components.hardware.gpu.DisplayManager;
 import org.jpsx.runtime.JPSXComponent;
 import org.jpsx.runtime.RuntimeConnections;
-import org.jpsx.runtime.util.Timing;
 import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
+import org.jpsx.runtime.util.Timing;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -302,7 +302,7 @@ public class AWTDisplay extends JPSXComponent implements Display, KeyListener {
     }
 
     public void keyPressed(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_F12) {
+        if (e.getKeyCode() == KeyEvent.VK_0) {
             switchsize();
         }
         if (e.getKeyCode() == KeyEvent.VK_F11) {

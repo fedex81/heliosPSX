@@ -59,10 +59,7 @@ public class AWTKeyboardController extends StandardController implements KeyList
         private Map<Integer, Integer> map = CollectionsFactory.newHashMap();
 
         public int get(int vkey) {
-            Integer mask = map.get(vkey);
-            if (mask != null)
-                return mask;
-            return 0;
+            return map.getOrDefault(vkey, 0);
         }
 
         public void put(int mask, int vkey) {

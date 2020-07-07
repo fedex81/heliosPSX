@@ -29,10 +29,10 @@ public abstract class StandardController extends BasicPad {
     public static final int PADLdown = (1 << 14);
     public static final int PADLleft = (1 << 15);
     public static final int PADLright = (1 << 13);
-    public static final int PADRup = (1 << 4);
-    public static final int PADRdown = (1 << 6);
-    public static final int PADRleft = (1 << 7);
-    public static final int PADRright = (1 << 5);
+    public static final int PADRup = (1 << 4);    //triangle
+    public static final int PADRdown = (1 << 6);  //cross
+    public static final int PADRleft = (1 << 7);  //square
+    public static final int PADRright = (1 << 5); //circle
 
     public static final int PADi = (1 << 9);
     public static final int PADj = (1 << 10);
