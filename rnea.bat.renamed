@@ -1,1 +1,0 @@
-java -Xmx128M -XX:-DontCompileHugeMethods -Dsun.java2d.ddscale=true org.jpsx.bootstrap.JPSXLauncher %*
