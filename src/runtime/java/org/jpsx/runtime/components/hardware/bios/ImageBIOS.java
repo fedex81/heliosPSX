@@ -61,17 +61,17 @@ public class ImageBIOS extends JPSXComponent {
     }
 
     private void populateMemory() {
-        String biosLoc = ".";
-        try {
-            biosLoc = Paths.get(biosFolder.toAbsolutePath().toString(), biosFileName).
-                    toAbsolutePath().toString();
-            log.info("Loading bios "+biosLoc+" ... ");
-            RandomAccessFile in = new RandomAccessFile(biosLoc, "r");
+        String biosLoc = Paths.get(biosFolder.toAbsolutePath().toString(), biosFileName).
+                toAbsolutePath().toString();
+        try (
+                RandomAccessFile in = new RandomAccessFile(biosLoc, "r");
+                FileChannel channel = in.getChannel();
+        ) {
+            log.info("Loading bios " + biosLoc + " ... ");
             AddressSpace.ResolveResult rr = new AddressSpace.ResolveResult();
             AddressSpace addressSpace = CoreComponentConnections.ADDRESS_SPACE.resolve();
             addressSpace.resolve(ADDRESS, SIZE, true, rr);
 
-            FileChannel channel = in.getChannel();
             ByteBuffer bytebuf = ByteBuffer.allocateDirect(SIZE);
             bytebuf.order(ByteOrder.LITTLE_ENDIAN);
             IntBuffer intbuf = bytebuf.asIntBuffer();
@@ -82,7 +82,6 @@ public class ImageBIOS extends JPSXComponent {
             }
             intbuf.rewind();
             intbuf.get(rr.mem);
-            channel.close();
         } catch (IOException e) {
             throw new InvalidConfigurationException("Can't load BIOS image " + biosLoc, e);
         }

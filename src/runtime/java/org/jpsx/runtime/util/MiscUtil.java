@@ -24,6 +24,12 @@ import java.io.Closeable;
 import java.io.IOException;
 
 public class MiscUtil {
+
+    public static final String NATIVE_LIB_PATH = System.getProperty("native.lib.location", "lib");
+    public static final String OS_NAME = System.getProperty("os.name").toLowerCase();
+    public static final String NATIVE_SUBDIR = OS_NAME.contains("win") ? "windows" :
+            (OS_NAME.contains("mac") ? "osx" : "linux");
+
     public static String toHex(int val, int digits) {
         String rc = Integer.toHexString(val);
         if (rc.length() != digits) {

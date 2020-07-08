@@ -21,9 +21,12 @@ package org.jpsx.runtime.components.hardware.sio.input;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.log4j.Logger;
+import org.jpsx.runtime.util.MiscUtil;
 
 import java.io.File;
 import java.util.List;
+
+import static org.jpsx.runtime.util.MiscUtil.NATIVE_LIB_PATH;
 
 public interface InputProvider {
 
@@ -34,14 +37,8 @@ public interface InputProvider {
 
     List<String> DEFAULT_CONTROLLERS = ImmutableList.of(NO_CONTROLLER, KEYBOARD_CONTROLLER);
 
-    String OS_NAME = System.getProperty("os.name").toLowerCase();
-    String NATIVE_SUBDIR = OS_NAME.contains("win") ? "windows" :
-            (OS_NAME.contains("mac") ? "osx" : "linux");
-
-
     boolean DEBUG_DETECTION = Boolean.valueOf(System.getProperty("jinput.detect.debug", "false"));
     boolean JINPUT_ENABLE = Boolean.valueOf(System.getProperty("jinput.enable", "false"));
-    String JINPUT_NATIVES_PATH = System.getProperty("jinput.native.location", "lib");
 
     enum PlayerNumber {
         P1, P2
@@ -72,8 +69,8 @@ public interface InputProvider {
     float ON = 1.0f;
 
     static void bootstrap() {
-        String lib = new File(".").getAbsolutePath() + File.separator + JINPUT_NATIVES_PATH
-                + File.separator + NATIVE_SUBDIR;
+        String lib = new File(".").getAbsolutePath() + File.separator + NATIVE_LIB_PATH
+                + File.separator + MiscUtil.NATIVE_SUBDIR;
 //        System.out.println(lib);
         System.setProperty("net.java.games.input.librarypath", lib);
         LOG.info("Loading system library from: " + lib);

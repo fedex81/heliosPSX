@@ -19,32 +19,32 @@
 package org.jpsx.runtime.components.hardware.gpu;
 
 import org.apache.log4j.Logger;
+import org.jpsx.api.InvalidConfigurationException;
 import org.jpsx.api.components.hardware.gpu.Display;
 import org.jpsx.api.components.hardware.gpu.DisplayManager;
-import org.jpsx.api.InvalidConfigurationException;
 import org.jpsx.runtime.JPSXComponent;
 import org.jpsx.runtime.RuntimeConnections;
-import org.jpsx.runtime.util.Timing;
 import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
-import org.lwjgl.opengl.AWTGLCanvas;
-import org.lwjgl.opengl.PixelFormat;
-import org.lwjgl.opengl.GL11;
-import static org.lwjgl.opengl.GL11.*;
-import static org.lwjgl.opengl.GL12.*;
+import org.jpsx.runtime.util.MiscUtil;
+import org.jpsx.runtime.util.Timing;
 import org.lwjgl.LWJGLException;
+import org.lwjgl.opengl.AWTGLCanvas;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.PixelFormat;
 
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.image.*;
-import java.nio.IntBuffer;
+import java.awt.event.*;
+import java.awt.image.DataBufferInt;
+import java.awt.image.DirectColorModel;
+import java.awt.image.WritableRaster;
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
+
+import static org.jpsx.runtime.util.MiscUtil.NATIVE_LIB_PATH;
+import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL12.GL_BGRA;
 
 public class LWJGLDisplay extends JPSXComponent implements Display, KeyListener {
     private static final Logger log = Logger.getLogger("Display");
@@ -93,11 +93,18 @@ public class LWJGLDisplay extends JPSXComponent implements Display, KeyListener 
     private int blitTimeCount;
     private long refreshTimeTotal;
     private int refreshTimeCount;
-//    private boolean noStretch;
+    //    private boolean noStretch;
     private int textureHandle;
 
     private AWTGLCanvas canvas;
     int resindex = 1;
+
+    static {
+        String loc = new File(".").getAbsolutePath() + File.separator + NATIVE_LIB_PATH
+                + File.separator + MiscUtil.NATIVE_SUBDIR;
+        System.setProperty("org.lwjgl.librarypath", loc);
+        log.info("LWJGL native libs: " + loc);
+    }
 
 
     public LWJGLDisplay() {
@@ -416,7 +423,7 @@ public class LWJGLDisplay extends JPSXComponent implements Display, KeyListener 
     }
 
     public void keyPressed(KeyEvent e) {
-        if (e.getKeyCode() == KeyEvent.VK_F12) {
+        if (e.getKeyCode() == KeyEvent.VK_0) {
             switchsize();
         }
         if (e.getKeyCode() == KeyEvent.VK_F11) {
