@@ -98,6 +98,18 @@
         <component classname="org.jpsx.runtime.debugcomponents.emulator.console.Console"/>
     </components>
 
+    <components id="awt-display">
+        <component id="display" classname="org.jpsx.runtime.components.hardware.gpu.AWTDisplay">
+            <property name="showBlitTime" value="false"/>
+        </component>
+    </components>
+
+    <components id="swing-display">
+        <component id="display" classname="org.jpsx.runtime.ui.SwingWindow">
+            <property name="hasRomFile" value="${hasRomFile}"/>
+        </component>
+    </components>
+
     <!-- common stuff -->
     <components id="common-bits">
         <include refid="core-bits"/>
@@ -109,9 +121,8 @@
         <component classname="org.jpsx.runtime.components.hardware.sio.SIO0"/>
         <component classname="org.jpsx.runtime.components.hardware.sio.input.jinput.JinputGamepadInputProvider"/>
         <component classname="org.jpsx.runtime.components.hardware.gpu.GPU"/>
-        <component id="display" classname="org.jpsx.runtime.components.hardware.gpu.AWTDisplay">
-            <property name="showBlitTime" value="false"/>
-        </component>
+        <include refid="awt-display"/>
+        <!--<include refid="swing-display"/>-->
         <component classname="org.jpsx.runtime.components.hardware.gpu.DefaultDisplayManager"/>
         <component classname="org.jpsx.runtime.components.hardware.mdec.MDEC"/>
         <component classname="org.jpsx.runtime.components.hardware.bios.ImageBIOS"/>
@@ -120,7 +131,7 @@
             <property name="printCode" value="${printCode}"/>
             <property name="saveClasses" value="${saveClasses}"/>
             <property name="stage2" value="${stage2}"/>
-	    <property name="speculativeCompilation" value="${speculativeCompilation}"/>
+            <property name="speculativeCompilation" value="${speculativeCompilation}"/>
         </component>
     </components>
 

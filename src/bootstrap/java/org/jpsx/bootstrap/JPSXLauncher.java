@@ -25,20 +25,27 @@ import org.jpsx.api.InvalidConfigurationException;
 import org.jpsx.bootstrap.classloader.JPSXClassLoader;
 import org.jpsx.bootstrap.configuration.MachineDefinition;
 import org.jpsx.bootstrap.configuration.XMLMachineDefinitionParser;
+import org.jpsx.runtime.RuntimeConnections;
 import org.w3c.dom.Element;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Properties;
-import java.awt.*;
 
 /**
  * Bootstrap for JPSX - simply runs JPSXSystem in the {@link JPSXClassLoader}
  */
 public class JPSXLauncher {
     private static final Logger log = Logger.getLogger("Bootstrap");
+
+    static final String configFile = "jpsx.xml";
+    static final String machineId = "default";
+    static final String log4jFile = "log4j.properties";
+    static final Properties vars = new Properties();
 
     public static void main(String args[]) {
         // fix for Mac OSX which requires that we load AWT in the main classloader
@@ -72,23 +79,36 @@ public class JPSXLauncher {
                 machineId = args[i];
             }
         }
+        vars.put("hasRomFile", "true");
+        prepareLaunch(machineId, configFile, log4jFile, vars);
+    }
 
+    private static void prepareLaunch(String machineId, String configFile, String log4jFile, Properties vars) {
         // init log4j
         PropertyConfigurator.configure(log4jFile);
 
         log.info("configFile=" + configFile + " machineId=" + machineId);
-        Element config;
-        try {
-            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-            config = builder.parse(new File(configFile)).getDocumentElement();
-        } catch (IOException e) {
-            log.error("Cannot open/read '" + configFile + "'", e);
-            return;
-        } catch (Exception e) {
-            log.error("Cannot parse '" + configFile + "'", e);
+        Optional<Element> config = getConfigForFile(configFile);
+        if (!config.isPresent()) {
             return;
         }
+        launchMachine(config.get(), machineId, vars);
+    }
 
+    private static Optional<Element> getConfigForFile(String fileName) {
+        Optional<Element> config = Optional.empty();
+        try {
+            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            config = Optional.ofNullable(builder.parse(new File(fileName)).getDocumentElement());
+        } catch (IOException e) {
+            log.error("Cannot open/read '" + fileName + "'", e);
+        } catch (Exception e) {
+            log.error("Cannot parse '" + fileName + "'", e);
+        }
+        return config;
+    }
+
+    private static void launchMachine(Element config, String machineId, Properties vars) {
         try {
             MachineDefinition machineDefinition = new XMLMachineDefinitionParser().parse(config, machineId, vars);
             JPSXMachineLifecycle machine = JPSXClassLoader.newMachine(JPSXLauncher.class.getClassLoader(), machineDefinition);
@@ -98,6 +118,14 @@ public class JPSXLauncher {
         } catch (Throwable t) {
             log.error("Unexpected error", t);
         }
+    }
+
+    public static void launch(File file) {
+        Properties vars = new Properties();
+        vars.put("image", file.getAbsolutePath());
+        vars.put("hasRomFile", "true");
+        RuntimeConnections.MAIN.set(null);
+        prepareLaunch(machineId, configFile, log4jFile, vars);
     }
 
     private static void usage() {

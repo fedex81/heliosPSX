@@ -136,7 +136,7 @@ public class AWTDisplay extends JPSXComponent implements Display, KeyListener {
 
         public Image update(int x, int y, int w, int h) {
             if (image != null) image.flush();
-            image = bufferedImage.getSubimage(x, y, w, h);
+             image = bufferedImage.getSubimage(x, y, w, h);
             this.x = x;
             this.y = y;
             this.w = w;
@@ -231,7 +231,7 @@ public class AWTDisplay extends JPSXComponent implements Display, KeyListener {
     }
 
     public synchronized void refresh() {
-        boolean rgb24 = displayManager.getRGB24();
+        boolean rgb24 = displayManager.getRGB24bit();
         if (funkyfudge) {
             GPU.setVRAMFormat(!rgb24);
             funkyfudge = false;
@@ -333,7 +333,7 @@ public class AWTDisplay extends JPSXComponent implements Display, KeyListener {
 
     private static class Closer extends WindowAdapter {
         public void windowClosing(WindowEvent e) {
-            RuntimeConnections.MACHINE.resolve().close();
+            RuntimeConnections.MACHINE.resolve().exit();
         }
     }
 }

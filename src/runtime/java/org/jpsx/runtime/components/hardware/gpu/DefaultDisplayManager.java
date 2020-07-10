@@ -355,7 +355,7 @@ public class DefaultDisplayManager extends JPSXComponent implements DisplayManag
         getNextState().rgb24 = rgb24;
     }
 
-    public boolean getRGB24() {
+    public boolean getRGB24bit() {
         return getState().rgb24;
     }
 

@@ -33,4 +33,8 @@ public interface JPSXMachine {
     void addInitializer(int priority, Runnable initializer);
 
     void close();
+
+    default void exit() {
+        close();
+    }
 }

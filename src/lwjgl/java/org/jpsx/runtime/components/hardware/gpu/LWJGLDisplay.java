@@ -344,7 +344,7 @@ public class LWJGLDisplay extends JPSXComponent implements Display, KeyListener 
 
     // todo fix sync
     public void refresh() {
-        boolean rgb24 = displayManager.getRGB24();
+        boolean rgb24 = displayManager.getRGB24bit();
         if (funkyfudge) {
             GPU.setVRAMFormat(!rgb24);
             funkyfudge = false;

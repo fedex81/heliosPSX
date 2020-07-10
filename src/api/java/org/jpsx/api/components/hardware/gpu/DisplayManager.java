@@ -27,7 +27,7 @@ public interface DisplayManager {
 
     boolean getDoubleY();
 
-    boolean getRGB24();
+    boolean getRGB24bit();
 
     boolean getBlanked();
 

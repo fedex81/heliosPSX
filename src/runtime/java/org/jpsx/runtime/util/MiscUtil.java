@@ -39,6 +39,18 @@ public class MiscUtil {
         return rc;
     }
 
+    public static Runnable sleeper() {
+        return () -> {
+            while (true) {
+                try {
+                    Thread.sleep(Integer.MAX_VALUE);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        };
+    }
+
     protected static String ALPHA = "0123456789abcdef";
 
     public static int parseHex(String hex) {

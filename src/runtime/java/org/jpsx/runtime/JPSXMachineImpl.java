@@ -89,14 +89,7 @@ public class JPSXMachineImpl implements JPSXMachine, JPSXMachineLifecycle {
         } else {
             // default implementation is just to run cpu
             RuntimeConnections.CPU_CONTROL.resolve().go();
-
-            while (true) {
-                try {
-                    Thread.sleep(Integer.MAX_VALUE);
-                } catch (InterruptedException e) {
-                    break;
-                }
-            }
+            MiscUtil.sleeper().run();
         }
 
         close();
@@ -148,7 +141,11 @@ public class JPSXMachineImpl implements JPSXMachine, JPSXMachineLifecycle {
             log.info("Closing: " + component.getDescription());
             MiscUtil.closeQuietly(component, true);
         }
-        // todo something other than this!
+    }
+
+    @Override
+    public void exit() {
+        close();
         System.exit(0);
     }
 
