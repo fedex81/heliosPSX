@@ -19,8 +19,6 @@
 
 package org.jpsx.runtime.ui;
 
-import org.jpsx.runtime.ui.SystemProvider.VideoMode;
-
 import java.awt.*;
 
 public class ScreenSizeHelper {
@@ -44,10 +42,6 @@ public class ScreenSizeHelper {
             ScreenSizeHelper.DEFAULT_Y);
     public static Dimension DEFAULT_FRAME_SIZE = new Dimension((int) (DEFAULT_SCALED_SCREEN_SIZE.width * 1.02),
             (int) (DEFAULT_SCALED_SCREEN_SIZE.height * 1.10));
-
-    public static Dimension getScreenSize(VideoMode videoMode, double multiplier, boolean mantainAspectRatio) {
-        return getScreenSize(videoMode.getDimension(), multiplier, mantainAspectRatio);
-    }
 
     public static Dimension getScreenSize(Dimension src, double multiplier, boolean mantainAspectRatio) {
         Dimension dim = src;

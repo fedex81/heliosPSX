@@ -105,7 +105,7 @@
     </components>
 
     <components id="swing-display">
-        <component id="display" classname="org.jpsx.runtime.ui.SwingWindow">
+        <component id="display" classname="org.jpsx.runtime.ui.SwingWindowPsx">
             <property name="hasRomFile" value="${hasRomFile}"/>
         </component>
     </components>
@@ -121,8 +121,8 @@
         <component classname="org.jpsx.runtime.components.hardware.sio.SIO0"/>
         <component classname="org.jpsx.runtime.components.hardware.sio.input.jinput.JinputGamepadInputProvider"/>
         <component classname="org.jpsx.runtime.components.hardware.gpu.GPU"/>
-        <include refid="awt-display"/>
-        <!--<include refid="swing-display"/>-->
+        <!--<include refid="awt-display"/>-->
+        <include refid="swing-display"/>
         <component classname="org.jpsx.runtime.components.hardware.gpu.DefaultDisplayManager"/>
         <component classname="org.jpsx.runtime.components.hardware.mdec.MDEC"/>
         <component classname="org.jpsx.runtime.components.hardware.bios.ImageBIOS"/>

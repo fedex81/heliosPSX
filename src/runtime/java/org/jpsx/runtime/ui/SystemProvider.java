@@ -19,13 +19,9 @@
 
 package org.jpsx.runtime.ui;
 
-import javax.swing.filechooser.FileFilter;
-import java.awt.*;
-import java.io.File;
-import java.util.EnumSet;
-
 public interface SystemProvider {
-//    extends Device {
+
+    String[] psxBinaryTypes = {"cue"};
 
     void handleSystemEvent(SystemEvent event, Object parameter);
 
@@ -34,12 +30,6 @@ public interface SystemProvider {
      **/
 
     boolean isRomRunning();
-
-//    RegionDetector.Region getRegion();
-
-//    default long getRegionCode() {
-//        return getRegion().getVersionCode();
-//    }
 
     String getRomName();
 
@@ -50,16 +40,7 @@ public interface SystemProvider {
     default void reset() {
     }
 
-    //TODO
-    static class VideoMode {
-        Dimension d = new Dimension(320, 256);
-
-        Dimension getDimension() {
-            return d;
-        }
-    }
-
-    public enum SystemType {
+    enum SystemType {
         NONE(""),
         PSX("PSX");
 
@@ -73,65 +54,6 @@ public interface SystemProvider {
             return shortName;
         }
     }
-
-    static class FileLoader {
-        public static String basePath = System.getProperty("user.home") + File.separatorChar + "roms";
-
-        private static String SNAPSHOT_VERSION = "SNAPSHOT";
-        private static String MANIFEST_RELATIVE_PATH = "/META-INF/MANIFEST.MF";
-        private static String BIOS_JAR_PATH = ".";
-        public static String QUICK_SAVE_FILENAME = "quick_save";
-        public static String QUICK_SAVE_PATH = System.getProperty("quick.save.path", ".");
-        public static FileFilter ROM_FILTER = null;
-        public static FileFilter SAVE_STATE_FILTER = null;
-
-        static public String readFileContentAsString(String str) {
-            return "";
-        }
-    }
-
-    public enum Region {
-        JAPAN('J', 2, 0x00, 60),
-        USA('U', 0, 0x80, 60),
-        EUROPE('E', 1, 0xC0, 50);
-
-        private static EnumSet<Region> values = EnumSet.allOf(Region.class);
-
-        private char region;
-        private long versionCode;
-        private int fps;
-        private int order;
-        private double frameIntervalMs;
-
-        Region(char region, int order, long versionCode, int fps) {
-            this.region = region;
-            this.versionCode = versionCode;
-            this.fps = fps;
-            this.order = order;
-            this.frameIntervalMs = 1000d / fps;
-        }
-
-        public static Region getRegion(char region) {
-            Region res = null;
-            for (Region r : Region.values) {
-                res = r.region == region ? r : res;
-            }
-            return res;
-        }
-
-        public int getFps() {
-            return fps;
-        }
-
-        public double getFrameIntervalMs() {
-            return frameIntervalMs;
-        }
-
-        public long getVersionCode() {
-            return versionCode;
-        }
-    }
-    //TODO
 
     enum SystemEvent {
         NONE,

@@ -42,8 +42,8 @@ public class SimpleConnection<I> extends Connection<I> {
     }
 
     public void set(I target) {
-        if (target == null)
-            throw new IllegalStateException("Target for simple connection '" + getName() + "' may only be set once");
+//        if (target == null)
+//            throw new IllegalStateException("Target for simple connection '" + getName() + "' may only be set once");
         this.target = target;
     }
 

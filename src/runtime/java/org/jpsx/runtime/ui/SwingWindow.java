@@ -30,10 +30,8 @@ import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
 import org.jpsx.runtime.components.hardware.gpu.GPU;
 import org.jpsx.runtime.components.hardware.sio.input.InputProvider;
 import org.jpsx.runtime.components.hardware.sio.input.InputProvider.PlayerNumber;
-import org.jpsx.runtime.ui.SystemProvider.FileLoader;
-import org.jpsx.runtime.ui.SystemProvider.Region;
 import org.jpsx.runtime.ui.SystemProvider.SystemEvent;
-import org.jpsx.runtime.ui.SystemProvider.VideoMode;
+import org.jpsx.runtime.util.FileLoader;
 import org.jpsx.runtime.util.MiscUtil;
 
 import javax.swing.*;
@@ -44,7 +42,6 @@ import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -52,10 +49,10 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 import static org.jpsx.runtime.ui.ScreenSizeHelper.*;
-import static org.jpsx.runtime.ui.SystemProvider.FileLoader.QUICK_SAVE_PATH;
 import static org.jpsx.runtime.ui.SystemProvider.SystemEvent.*;
+import static org.jpsx.runtime.util.FileLoader.QUICK_SAVE_PATH;
 
-public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow, Display {
+public abstract class SwingWindow extends SingletonJPSXComponent implements DisplayWindow, Display {
 
     private static final Logger LOG = Logger.getLogger(SwingWindow.class.getSimpleName());
 
@@ -68,18 +65,15 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
 
     private BufferedImage baseImage;
     private Image destImage;
-    private int[] pixelsSrc;
-    private int[] pixelsDest;
     private double scale = DEFAULT_SCALE_FACTOR;
 
     private final JLabel perfLabel = new JLabel("");
     private Canvas screenCanvas;
     private BufferStrategy strategy;
-    private Graphics2D backgroundGraphics;
     private Graphics2D graphics;
 
     private JFrame jFrame;
-    private SystemProvider mainEmu;
+    protected SystemProvider mainEmu;
 
     private List<JCheckBoxMenuItem> regionItems;
     private JCheckBoxMenuItem fullScreenItem;
@@ -102,6 +96,9 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
     private DisplayManager displayManager;
     private boolean hasRomFile;
 
+    private int[] renderData;
+    private Dimension baseD;
+
     public SwingWindow() {
         this(null);
     }
@@ -114,8 +111,9 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
                 forEach(pn -> inputMenusMap.put(pn, new JMenu(pn.name())));
     }
 
-    int[] renderData;
-    Dimension baseD;
+    protected abstract void handleSystemEvent(SystemEvent event, Object par, String msg);
+
+    protected abstract KeyStroke getAcceleratorKey(SystemEvent event);
 
     @Override
     public void init() {
@@ -134,11 +132,6 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
         }
     }
 
-    public static void main(String[] args) {
-        SwingWindow frame = new SwingWindow(null);
-        frame.initSwing();
-    }
-
     public void setTitle(String title) {
         jFrame.setTitle(APP_NAME + mainEmu.getSystemType().getShortName() + " " + VERSION + " - " + title);
         reloadRecentFiles();
@@ -148,7 +141,7 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
     private void addKeyAction(JMenuItem component, SystemEvent event, ActionListener l) {
         AbstractAction action = toAbstractAction(component.getText(), l);
         if (event != NONE) {
-//            action.putValue(Action.ACCELERATOR_KEY, KeyBindingsHandler.getInstance().getKeyStrokeForEvent(event));
+            action.putValue(Action.ACCELERATOR_KEY, getAcceleratorKey(event));
             actionMap.put(event, action);
         }
         component.setAction(action);
@@ -196,7 +189,6 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
             //mmh we need INT_RGB here
             bi = new BufferedImage(d.width, d.height, BufferedImage.TYPE_INT_RGB);
         }
-        pixelsDest = getPixels(bi);
         return bi;
     }
 
@@ -213,7 +205,6 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
     public void resetScreen() {
 //        Util.sleep(250);
         SwingUtilities.invokeLater(() -> {
-            Arrays.fill(pixelsDest, 0);
             screenCanvas.invalidate();
             screenCanvas.repaint();
             perfLabel.setText("");
@@ -234,17 +225,6 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
     public String getRegionOverride() {
         return regionItems.stream().filter(i -> i.isSelected()).
                 map(JCheckBoxMenuItem::getText).findFirst().orElse(null);
-    }
-
-    //NOTE: this will copy the input array
-//    @Override
-    public void renderScreenLinear(int[] data, Dimension dimension,
-                                   int start, int end, Optional<String> label, VideoMode videoMode) {
-        if (UI_SCALE_ON_EDT) {
-            SwingUtilities.invokeLater(() -> renderScreenLinearInternal(pixelsSrc, dimension, label, videoMode));
-        } else {
-            renderScreenLinearInternal(pixelsSrc, dimension, label, videoMode);
-        }
     }
 
     public void initSwing() {
@@ -420,13 +400,6 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
         jFrame.setVisible(true);
     }
 
-    private void renderScreenLinearInternal(int[] data, Dimension dimension, Optional<String> label, VideoMode videoMode) {
-        boolean changed = resizeScreen(dimension);
-        RenderingStrategy.renderNearest(data, pixelsDest, nativeScreenSize, outputScreenSize);
-        label.ifPresent(this::showLabel);
-//        screenLabel.repaint();
-    }
-
     private void showLabel(String label) {
         showInfoCount--;
         if (actionInfo.isPresent()) {
@@ -438,53 +411,6 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
         if (showInfoCount <= 0) {
             actionInfo = Optional.empty();
         }
-    }
-
-    private boolean resizeScreen(Dimension dimension) {
-        boolean goFullScreen = fullScreenItem.getState();
-        Dimension newBaseScreenSize = getScreenSize(dimension, 1, false);
-        if (!newBaseScreenSize.equals(nativeScreenSize)) {
-            nativeScreenSize = newBaseScreenSize;
-        }
-        double scale = DEFAULT_SCALE_FACTOR;
-        if (goFullScreen) {
-            scale = ScreenSizeHelper.getFullScreenScaleFactor(fullScreenSize, nativeScreenSize);
-        }
-        return resizeScreenInternal(newBaseScreenSize, scale, goFullScreen);
-    }
-
-    private boolean resizeScreenInternal(Dimension newScreenSize, double scale, boolean isFullScreen) {
-        boolean scaleChanged = this.scale != scale;
-        boolean baseResize = !newScreenSize.equals(outputNonScaledScreenSize);
-        if (baseResize || scaleChanged) {
-
-            outputNonScaledScreenSize = newScreenSize;
-            this.scale = scale;
-            try {
-                Runnable resizeRunnable = getResizeRunnable(isFullScreen);
-                if (SwingUtilities.isEventDispatchThread()) {
-                    resizeRunnable.run();
-                } else {
-                    SwingUtilities.invokeAndWait(resizeRunnable);
-                }
-            } catch (InterruptedException | InvocationTargetException e) {
-                LOG.error(e.getMessage());
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private Runnable getResizeRunnable(boolean isFullScreen) {
-        return () -> {
-            outputScreenSize = ScreenSizeHelper.getScreenSize(nativeScreenSize, scale, FIX_ASPECT_RATIO);
-            destImage = createImage(getGraphicsDevice(), outputScreenSize);
-            jFrame.setPreferredSize(isFullScreen ? fullScreenSize : nativeScreenSize);
-            jFrame.getJMenuBar().setVisible(!isFullScreen);
-            jFrame.pack();
-            LOG.info("Emulation Viewport size: " + outputScreenSize);
-            LOG.info("Application size: " + jFrame.getSize());
-        };
     }
 
     private Optional<File> loadFileDialog(Component parent, FileFilter filter) {
@@ -536,25 +462,6 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
         handleSystemEvent(QUICK_SAVE, p, p.getFileName().toString());
     }
 
-    private void handleSystemEvent(SystemEvent event, Object par, String msg) {
-        switch (event) {
-            case CLOSE_APP:
-                RuntimeConnections.MACHINE.resolve().close();
-                System.exit(0);
-                break;
-            case CLOSE_ROM:
-                RuntimeConnections.MACHINE.resolve().close();
-                resetScreen();
-                break;
-            case NEW_ROM:
-                handleNewRom();
-                break;
-        }
-//TODO
-//        mainEmu.handleSystemEvent(event, par);
-        showInfo(event + (Strings.isNullOrEmpty(msg) ? "" : ": " + msg));
-    }
-
     private void handleSaveState() {
         Optional<File> optFile = fileDialog(jFrame, FileLoader.SAVE_STATE_FILTER, false);
         if (optFile.isPresent()) {
@@ -562,10 +469,10 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
         }
     }
 
-    private void handleNewRom() {
-        handleSystemEvent(CLOSE_ROM, null, null);
+    protected void handleNewRom() {
         Optional<File> optFile = loadRomDialog(jFrame);
         if (optFile.isPresent()) {
+            handleSystemEvent(CLOSE_ROM, null, null);
             Path file = optFile.get().toPath();
 //            mainEmu.handleSystemEvent(NEW_ROM, file);
             reloadRecentFiles();
@@ -743,6 +650,7 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
             try {
                 graphics = (Graphics2D) strategy.getDrawGraphics();
             } catch (IllegalStateException e) {
+                e.printStackTrace();
                 return null;
             }
         }
@@ -761,21 +669,21 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
         boolean rgb24 = displayManager.getRGB24bit();
         GPU.setVRAMFormat(rgb24);
         updateDimension();
-
+        double scaleW = 1, scaleH = 1;
+        if (dimension.width != DEFAULT_X || dimension.height != DEFAULT_Y) {
+            scaleW = scale * DEFAULT_X / dimension.width;
+            scaleH = scale * DEFAULT_Y / dimension.height;
+        }
+        int w = (int) (dimension.width * scaleW);
+        int h = (int) (dimension.height * scaleH);
         do {
             try {
                 bg = getBuffer();
-                double scaleW = 1, scaleH = 1;
-                if (dimension.width != DEFAULT_X || dimension.height != DEFAULT_Y) {
-                    scaleW = scale * DEFAULT_X / dimension.width;
-                    scaleH = scale * DEFAULT_Y / dimension.height;
-                }
                 if (displayManager.getBlanked()) {
                     bg.setColor(Color.BLACK);
-                    bg.fillRect(0, 0, (int) (dimension.width * scaleW), (int) (dimension.height * scaleH));
+                    bg.fillRect(0, 0, w, h);
                 } else {
-                    bg.drawImage(destImage, 0, 0, (int) (dimension.width * scaleW),
-                            (int) (dimension.height * scaleH)
+                    bg.drawImage(destImage, 0, 0, w, h
                             , 0, 0, dimension.width, dimension.height, null);
                 }
             } finally {
@@ -821,12 +729,5 @@ public class SwingWindow extends SingletonJPSXComponent implements DisplayWindow
             destImage = baseImage.getSubimage(x, y, w, h);
         }
         return change;
-    }
-
-    private void refreshRaster() {
-        if (updateDimension()) {
-//            screenLabel.setIcon(new ImageIcon(destImage));
-        }
-//        screenLabel.repaint();
     }
 }
