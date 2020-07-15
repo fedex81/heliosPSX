@@ -25,7 +25,7 @@ public interface CDMedia extends Closeable {
     int SECTOR_SIZE_BYTES = 2352;
 
     public enum TrackType {
-        UNKNOWN, MODE2_2352, MODE1_2352, AUDIO;
+        UNKNOWN, MODE2_2352, AUDIO;
 
         static TrackType[] values = TrackType.values();
 

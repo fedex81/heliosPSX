@@ -46,9 +46,9 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
 //    "rips/audio/Sonic CD (Europe)/Sonic CD (E).cue";
             //            "rips/Pocket Fighter (USA)/Pocket Fighter (USA).cue";
 //    "rips/Mega Man 8 (USA)/Mega Man 8 (USA).cue";
-            "rips/wipeoutxl.cue";
-    //            "rips/granturismo.cue";
-    //            "rips/microv3.cue";
+//            "rips/wipeoutxl.cue";
+//                "rips/gt.cue";
+            "rips/microv3.cue";
     private static final int MAX_TRACKS = 100; //0-99
     private CDMedia currentMedia;
 
@@ -186,15 +186,8 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
         public void readSector(int num, int[] buffer) throws MediaException {
             readSector(num, byteBuf);
             for (int i = 0; i < SECTOR_SIZE_BYTES / 4; i++) {
-                buffer[i] = getUInt32LE(byteBuf, i << 2);
+                buffer[i] = CDUtil.getUInt32LE(byteBuf, i << 2);
             }
-        }
-
-        public static int getUInt32LE(byte[] bytes, int index) {
-            return ((bytes[index + 0] & 0xFF) << 0) |
-                    ((bytes[index + 1] & 0xFF) << 8) |
-                    ((bytes[index + 2] & 0xFF) << 16) |
-                    ((bytes[index + 3] & 0xFF) << 24);
         }
 
         public static void logTracks(CDMedia media) {

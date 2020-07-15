@@ -1470,10 +1470,7 @@ public class CD extends JPSXComponent implements MemoryMapped {
                 byte[] byteBuf = sectorBuffers[sectorBufferNextRead];
 
                 for (int i = 0; i < SECTOR_SIZE_BYTES / 4; i++) {
-                    currentSector[i] = ((((int) byteBuf[i * 4 + 3]) & 0xff) << 24) |
-                            ((((int) byteBuf[i * 4 + 2]) & 0xff) << 16) |
-                            ((((int) byteBuf[i * 4 + 1]) & 0xff) << 8) |
-                            ((((int) byteBuf[i * 4]) & 0xff));
+                    currentSector[i] = CDUtil.getUInt32LE(byteBuf, i << 2);
                 }
                 currentLocation.init(sectorLocations[sectorBufferNextRead]);
 

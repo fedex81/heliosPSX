@@ -50,7 +50,7 @@ public class CDUtil {
                 CDMedia.TrackType tt = media.getTrackType(i);
                 if (tt == CDMedia.TrackType.AUDIO) {
                     rc |= MEDIA_HAS_AUDIO;
-                } else if (tt == CDMedia.TrackType.MODE2_2352 || tt == CDMedia.TrackType.MODE1_2352) {
+                } else if (tt == CDMedia.TrackType.MODE2_2352) {
                     rc |= MEDIA_HAS_DATA;
                 }
             }
@@ -85,6 +85,13 @@ public class CDUtil {
         int s = (msf & 0xff00) >> 8;
         int f = msf & 0xff;
         return MiscUtil.toHex(m, 2) + ":" + MiscUtil.toHex(s, 2) + ":" + MiscUtil.toHex(f, 2);
+    }
+
+    public static int getUInt32LE(byte[] bytes, int index) {
+        return ((bytes[index + 0] & 0xFF) << 0) |
+                ((bytes[index + 1] & 0xFF) << 8) |
+                ((bytes[index + 2] & 0xFF) << 16) |
+                ((bytes[index + 3] & 0xFF) << 24);
     }
 
     public static int toMSF(int m, int s, int f) {
