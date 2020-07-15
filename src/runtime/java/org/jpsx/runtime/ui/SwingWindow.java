@@ -118,9 +118,10 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
     @Override
     public void init() {
         super.init();
-        HardwareComponentConnections.DISPLAY.set(this);
-        hasRomFile = Boolean.valueOf(getProperty("hasRomFile", "false"));
         initSwing();
+        HardwareComponentConnections.DISPLAY.set(this);
+        RuntimeConnections.KEY_LISTENERS.add(setupFrameKeyListener());
+        hasRomFile = Boolean.valueOf(getProperty("hasRomFile", "false"));
     }
 
     @Override
@@ -374,8 +375,6 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         AbstractAction debugUiAction = toAbstractAction("debugUI", e -> showDebugInfo(!showDebug));
         actionMap.put(SET_DEBUG_UI, debugUiAction);
 
-        setupFrameKeyListener();
-
         jFrame.setMinimumSize(DEFAULT_FRAME_SIZE);
         jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jFrame.setResizable(true);
@@ -521,24 +520,27 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
     }
 
     //TODO this is necessary in fullScreenMode
-    private void setupFrameKeyListener() {
-        jFrame.addKeyListener(new KeyAdapter() {
+    private KeyListener setupFrameKeyListener() {
+        KeyListener kl = new KeyAdapter() {
 
             @Override
             public void keyPressed(KeyEvent e) {
                 SystemProvider mainEmu = getMainEmu();
                 KeyStroke keyStroke = KeyStroke.getKeyStrokeForEvent(e);
 //                LOG.info(keyStroke.toString());
-//                SystemProvider.SystemEvent event = KeyBindingsHandler.getInstance().getSystemEventIfAny(keyStroke);
-//                if (event != null && event != NONE) {
-//                    //if the menuBar is visible it will handle the event, otherwise we need to perform the action here
-//                    boolean menuVisible = jFrame.getJMenuBar().isVisible();
-//                    if (!menuVisible) {
-//                        Optional.ofNullable(actionMap.get(event)).ifPresent(act -> act.actionPerformed(null));
-//                    }
-//                }
+                SystemProvider.SystemEvent event = null; //TODO
+                // KeyBindingsHandler.getInstance().getSystemEventIfAny(keyStroke);
+                if (event != null && event != NONE) {
+                    //if the menuBar is visible it will handle the event, otherwise we need to perform the action here
+                    boolean menuVisible = jFrame.getJMenuBar().isVisible();
+                    if (!menuVisible) {
+                        Optional.ofNullable(actionMap.get(event)).ifPresent(act -> act.actionPerformed(null));
+                    }
+                }
             }
-        });
+        };
+        jFrame.addKeyListener(kl);
+        return kl;
     }
 
     private List<JCheckBoxMenuItem> createRegionItems() {

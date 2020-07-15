@@ -43,6 +43,9 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
     private static final Logger log = Logger.getLogger(CATEGORY);
     public static String CUE_FILE =
 //            "";
+//    "rips/audio/Sonic CD (Europe)/Sonic CD (E).cue";
+            //            "rips/Pocket Fighter (USA)/Pocket Fighter (USA).cue";
+//    "rips/Mega Man 8 (USA)/Mega Man 8 (USA).cue";
             "rips/wipeoutxl.cue";
     //            "rips/granturismo.cue";
     //            "rips/microv3.cue";
@@ -87,7 +90,7 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
         currentMedia = CueBinImageMedia.create(cueFile);
     }
 
-    private static class CueBinImageMedia implements CDMedia {
+    public static class CueBinImageMedia implements CDMedia {
         int first;
         int last;
         CueSheet cueSheet;
@@ -96,7 +99,7 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
         byte[] byteBuf = new byte[SECTOR_SIZE_BYTES];
         RandomAccessFile binFile;
 
-        private CueBinImageMedia() {
+        protected CueBinImageMedia() {
         }
 
         public TrackType getTrackType(int track) {
@@ -132,24 +135,8 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
                     FileReader fr = new FileReader(cueFile);
                     LineNumberReader reader = new LineNumberReader(fr);
             ) {
-                cueSheet = CueParser.parse(reader);
+                parse(reader);
                 dataFile = getFirstDataFile(cueFile, cueSheet);
-                List<TrackData> l = cueSheet.getAllTrackData();
-                last = l.size();
-                first = -1;
-                for (int i = 0; i < l.size(); i++) {
-                    TrackData td = l.get(i);
-                    TrackType tt = TrackType.getTrackType(td.getDataType());
-                    if (tt != null) {
-                        trackTypeList[td.getNumber()] = tt;
-                        int sectorVal = td.getIndex(1).getPosition().getTotalFrames() + offset;
-                        msfList[td.getNumber()] = toMSF(sectorVal);
-                        first = first < 0 ? td.getNumber() : first;
-                    } else {
-                        log.warn("Unable to parse track: " + td);
-                    }
-                }
-//                logTracks(cueFile, this);
                 binFile = new RandomAccessFile(dataFile, "r");
                 msfList[0] = toMSF(offset + (int) (binFile.length() / (long) SECTOR_SIZE_BYTES));
             } catch (IOException e) {
@@ -157,6 +144,28 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
                 return false;
             }
             return true;
+        }
+
+        public void parse(LineNumberReader reader) throws IOException {
+            int offset = 150;
+            cueSheet = CueParser.parse(reader);
+            List<TrackData> l = cueSheet.getAllTrackData();
+            last = l.size();
+            first = -1;
+            for (int i = 0; i < l.size(); i++) {
+                TrackData td = l.get(i);
+                TrackType tt = TrackType.getTrackType(td.getDataType());
+                if (tt != null) {
+                    trackTypeList[td.getNumber()] = tt;
+                    int sectorVal = td.getIndex(1).getPosition().getTotalFrames() + offset;
+                    msfList[td.getNumber()] = toMSF(sectorVal);
+                    first = first < 0 ? td.getNumber() : first;
+                } else {
+                    log.warn("Unable to parse track: " + td);
+                }
+            }
+//            System.out.println(cueSheet);
+//            logTracks(this);
         }
 
         private File getFirstDataFile(File cueFile, CueSheet cueSheet) {
@@ -175,22 +184,20 @@ public class CueBinImageDrive extends SingletonJPSXComponent implements CDDrive 
         }
 
         public void readSector(int num, int[] buffer) throws MediaException {
-            try {
-                // note findbugs complains about this, but we know that the value can't overflow
-                binFile.seek(num * SECTOR_SIZE_BYTES);
-                binFile.readFully(byteBuf);
-                for (int i = 0; i < SECTOR_SIZE_BYTES / 4; i++) {
-                    buffer[i] = ((((int) byteBuf[i * 4 + 3]) & 0xff) << 24) |
-                            ((((int) byteBuf[i * 4 + 2]) & 0xff) << 16) |
-                            ((((int) byteBuf[i * 4 + 1]) & 0xff) << 8) |
-                            ((((int) byteBuf[i * 4]) & 0xff));
-                }
-            } catch (IOException e) {
-                throw new MediaException("readSector failed", e);
+            readSector(num, byteBuf);
+            for (int i = 0; i < SECTOR_SIZE_BYTES / 4; i++) {
+                buffer[i] = getUInt32LE(byteBuf, i << 2);
             }
         }
 
-        private static void logTracks(File cueFile, CDMedia media) {
+        public static int getUInt32LE(byte[] bytes, int index) {
+            return ((bytes[index + 0] & 0xFF) << 0) |
+                    ((bytes[index + 1] & 0xFF) << 8) |
+                    ((bytes[index + 2] & 0xFF) << 16) |
+                    ((bytes[index + 3] & 0xFF) << 24);
+        }
+
+        public static void logTracks(CDMedia media) {
             for (int i = media.getFirstTrack(); i <= media.getLastTrack(); i++) {
                 System.out.printf("Track %2d, %10s, MSF: %s\n", i, media.getTrackType(i),
                         CDUtil.printMSF(media.getTrackMSF(i)));
