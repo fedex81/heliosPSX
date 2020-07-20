@@ -22,6 +22,7 @@ package org.jpsx.runtime.ui;
 import com.google.common.base.Strings;
 import org.apache.log4j.Logger;
 import org.jpsx.runtime.RuntimeConnections;
+import org.jpsx.runtime.components.core.R3000Impl;
 import org.jpsx.runtime.ui.SystemProvider.SystemEvent;
 
 import javax.swing.*;
@@ -31,6 +32,7 @@ public class SwingWindowPsx extends SwingWindow {
     private static final Logger LOG = Logger.getLogger(SwingWindowPsx.class.getSimpleName());
 
     public SwingWindowPsx() {
+        super(null);
         mainEmu = createSystemProvider();
     }
 
@@ -52,14 +54,17 @@ public class SwingWindowPsx extends SwingWindow {
             public void handleSystemEvent(SystemEvent event, Object parameter) {
                 switch (event) {
                     case CLOSE_APP:
+                        R3000Impl.shutdown();
                         RuntimeConnections.MACHINE.resolve().exit();
                         break;
                     case CLOSE_ROM:
+                        R3000Impl.shutdown();
                         RuntimeConnections.MACHINE.resolve().close();
                         resetScreen();
+                        reloadSystem(mainEmu);
                         break;
                     case NEW_ROM:
-                        handleNewRom();
+                        handleNewRomDialog();
                         break;
                 }
             }

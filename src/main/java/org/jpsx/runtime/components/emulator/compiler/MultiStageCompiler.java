@@ -76,6 +76,7 @@ public class MultiStageCompiler extends SingletonJPSXComponent implements Native
 
     private static final int[] breakpoints = new int[MAX_BREAKPOINTS];
     private static int breakpointLimit;
+    private static volatile boolean stop = false;
 
     private static class Refs extends FinalResolvedConnectionCache {
         public static final int[] interpreterRegs = CoreComponentConnections.R3000.resolve().getInterpreterRegs();
@@ -476,6 +477,13 @@ public class MultiStageCompiler extends SingletonJPSXComponent implements Native
         }
     }
 
+    @Override
+    public void close() {
+        stop = true;
+        broker.reset();
+        broker.thread.interrupt();
+    }
+
     protected static class CompilationBroker implements Runnable {
         protected LinkedList<CodeUnit> unitsToFollow = new LinkedList<CodeUnit>();
         protected LinkedList<CodeUnit> unitsForStage1 = new LinkedList<CodeUnit>();
@@ -485,6 +493,7 @@ public class MultiStageCompiler extends SingletonJPSXComponent implements Native
         protected Stage1Generator stage1Generator;
         protected Stage2Generator stage2Generator;
         protected int resetCount;
+        protected Thread thread;
 
         public CompilationBroker() {
             if (Settings.enableSpeculativeCompilation) {
@@ -499,9 +508,9 @@ public class MultiStageCompiler extends SingletonJPSXComponent implements Native
             if (Settings.enableSpeculativeCompilation ||
                     (Settings.enableSecondStage && Settings.secondStageInBackground)) {
                 log.info("Starting background compilation thread");
-                Thread t = new Thread(this, "Background compilation");
-                t.setPriority(Thread.NORM_PRIORITY - 2); // low priority
-                t.start();
+                thread = new Thread(this, "Background compilation");
+                thread.setPriority(Thread.NORM_PRIORITY - 2); // low priority
+                thread.start();
             }
         }
 
@@ -539,7 +548,7 @@ public class MultiStageCompiler extends SingletonJPSXComponent implements Native
         // something that it is being overwritten...
         public void run() {
             try {
-                while (true) {
+                while (!stop) {
                     CodeUnit linkUnit = null;
                     CodeUnit c1Unit = null;
                     CodeUnit c2Unit = null;

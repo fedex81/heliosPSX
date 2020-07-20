@@ -98,6 +98,8 @@ public final class R3000Impl extends SingletonJPSXComponent implements ClassModi
     private static final int CMD_STEP = 1;
     private static final int CMD_RUN = 2;
     private static final int CMD_UPDATE_BREAKPOINTS = 3;
+    private static final int CMD_DONE = 4;
+
 
     private static CPUInstruction[] decoding;
     private static CPUInstruction[] decodingSPECIAL;
@@ -257,13 +259,7 @@ public final class R3000Impl extends SingletonJPSXComponent implements ClassModi
         executionThread.start();
     }
 
-    public static void shutdown() {
-        //pause();
-        //m_cpuLaunch = false;
-        //synchronized (m_cpuControlSemaphore) {
-        //    m_cpuControlSemaphore.notify();
-        //}
-    }
+    private static volatile boolean stop = false;
 
     /**
      * If not called from the execution thread, then this blocks until the execution is paused;
@@ -324,6 +320,41 @@ public final class R3000Impl extends SingletonJPSXComponent implements ClassModi
         sendCmd(CMD_RUN);
     }
 
+    //TODO ugly
+    public static void shutdown() {
+        R3000Impl.stop = true;
+        synchronized (cpuControlSemaphore) {
+            cpuControlSemaphore.notifyAll();
+        }
+        MiscUtil.sleep(100);
+        Thread t = new Thread(() -> sendCmd(CMD_DONE));
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        MiscUtil.sleep(100);
+        synchronized (cpuControlSemaphore) {
+            cpuControlSemaphore.notifyAll();
+        }
+    }
+
+    // todo revisit this
+    private class R3000Thread extends Thread {
+        public R3000Thread() {
+            super("Execution thread");
+            synchronized (cpuControlSemaphore) {
+                cpuReadyForCommand = false;
+            }
+        }
+
+        public void run() {
+            log.info("Processor thread starts");
+            executeFromPC();
+            log.info("Processor thread ends");
+        }
+    }
+
     private static void cpuWaitForCmd() {
         executionListeners.cpuPaused();
         synchronized (cpuControlSemaphore) {
@@ -356,27 +387,14 @@ public final class R3000Impl extends SingletonJPSXComponent implements ClassModi
                         updateBreakpoints();
                         cpuCmdPending = false;
                         break;
+                    case CMD_DONE:
+                        done = true;
+                        break;
                 }
                 cpuReadyForCommand = false;
                 cpuControlSemaphore.notify();
                 //System.out.println("cpu: acknowledging cmd");
             }
-        }
-    }
-
-    // todo revisit this
-    private class R3000Thread extends Thread {
-        public R3000Thread() {
-            super("Execution thread");
-            synchronized (cpuControlSemaphore) {
-                cpuReadyForCommand = false;
-            }
-        }
-
-        public void run() {
-            log.info("Processor thread starts");
-            executeFromPC();
-            log.info("Processor thread ends");
         }
     }
 
@@ -386,7 +404,7 @@ public final class R3000Impl extends SingletonJPSXComponent implements ClassModi
 
         delayedPCDelta = currentPCDelta = 4;
 
-        while (true) {
+        while (!stop) {
             try {
                 interpreterLoop();
             } catch (ContinueExecutionException e) {

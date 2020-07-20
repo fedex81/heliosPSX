@@ -206,8 +206,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
     public void resetScreen() {
 //        Util.sleep(250);
         SwingUtilities.invokeLater(() -> {
-            screenCanvas.invalidate();
-            screenCanvas.repaint();
+            jFrame.remove(screenCanvas);
             perfLabel.setText("");
             jFrame.setTitle(FRAME_TITLE_HEAD);
             LOG.info("Blanking screen");
@@ -297,15 +296,16 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         bar.add(perfLabel);
 
         JMenuItem loadRomItem = new JMenuItem("Load ROM");
-        addKeyAction(loadRomItem, NEW_ROM, e -> handleNewRom());
+        addKeyAction(loadRomItem, NEW_ROM, e -> handleNewRomDialog());
 
         recentFilesMenu = new JMenu("Recent Files");
         recentFilesItems = new JMenuItem[PrefStore.recentFileTotal];
         IntStream.range(0, recentFilesItems.length).forEach(i -> {
             recentFilesItems[i] = new JMenuItem();
-            addKeyAction(recentFilesItems[i], NONE, e -> handleNewRom(recentFilesItems[i].getToolTipText()));
+            addKeyAction(recentFilesItems[i], NONE, e -> handleNewRomRecent(recentFilesItems[i].getToolTipText()));
             recentFilesMenu.add(recentFilesItems[i]);
         });
+        PrefStore.initPrefs();
         reloadRecentFiles();
 
         JMenuItem closeRomItem = new JMenuItem("Close ROM");
@@ -468,28 +468,31 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         }
     }
 
-    protected void handleNewRom() {
+    protected void handleNewRomDialog() {
         Optional<File> optFile = loadRomDialog(jFrame);
         if (optFile.isPresent()) {
-            handleSystemEvent(CLOSE_ROM, null, null);
+            //write recent files
             Path file = optFile.get().toPath();
-//            mainEmu.handleSystemEvent(NEW_ROM, file);
-            reloadRecentFiles();
-            showInfo(NEW_ROM + ": " + file.getFileName());
-            resetScreen();
-            SwingUtilities.invokeLater(() -> {
-                jFrame.removeAll();
-                jFrame.repaint();
-                jFrame.dispose();
-            });
-            SwingUtilities.invokeLater(() -> JPSXLauncher.launch(file.toFile()));
+            PrefStore.addRecentFile(file.toAbsolutePath().toString());
+            PrefStore.close();
+            handleNewRom(optFile.get());
         }
     }
 
-    private void handleNewRom(String path) {
-        Path p = Paths.get(path);
-        showInfo(NEW_ROM + ": " + p.getFileName());
-        mainEmu.handleSystemEvent(NEW_ROM, p);
+    private void handleNewRomRecent(String path) {
+        handleNewRom(new File(path));
+    }
+
+    private void handleNewRom(File f) {
+        handleSystemEvent(CLOSE_ROM, null, null);
+        showInfo(NEW_ROM + ": " + f.getName());
+        resetScreen();
+        SwingUtilities.invokeLater(() -> {
+            jFrame.removeAll();
+            jFrame.repaint();
+            jFrame.dispose();
+        });
+        SwingUtilities.invokeLater(() -> JPSXLauncher.launch(f));
     }
 
     private SystemProvider getMainEmu() {
@@ -498,7 +501,6 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
 
     @Override
     public void reloadSystem(SystemProvider systemProvider) {
-        Optional.ofNullable(mainEmu).ifPresent(sys -> sys.handleSystemEvent(CLOSE_ROM, null));
         this.mainEmu = systemProvider;
 
         Arrays.stream(jFrame.getKeyListeners()).forEach(jFrame::removeKeyListener);

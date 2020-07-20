@@ -1368,6 +1368,16 @@ public class CD extends JPSXComponent implements MemoryMapped {
         }
     }
 
+    private static boolean stop = false;
+
+    @Override
+    public void close() {
+        stop = true;
+        synchronized (CD.class) {
+            CD.class.notifyAll();
+        }
+    }
+
     private static class SectorThread extends Thread {
         private static final int SECTOR_BUFFERS = 32;
         private static final int BUFFERS_BEFORE_READ = 8;
@@ -1492,7 +1502,7 @@ public class CD extends JPSXComponent implements MemoryMapped {
         public void run() {
             log.info("SectorThread starts");
             try {
-                while (true) {
+                while (!stop) {
                     boolean read;
                     synchronized (CD.class) {
                         read = state == STATE_READN || state == STATE_READS || (state == STATE_PLAY && softwareCDDA) || state == STATE_SEEKL || state == STATE_SEEKP;

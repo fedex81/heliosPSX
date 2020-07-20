@@ -63,6 +63,16 @@ public class MTScheduler extends SingletonJPSXComponent implements Scheduler {
         actionThread.start();
     }
 
+    private static volatile boolean stop;
+
+    @Override
+    public void close() {
+        stop = true;
+        synchronized (actionThread) {
+            actionThread.notifyAll();
+        }
+    }
+
     public void schedule(long time, ScheduledAction action) {
         schedule(time, Quartz.MSEC, action);
     }
@@ -117,7 +127,7 @@ public class MTScheduler extends SingletonJPSXComponent implements Scheduler {
         public void run() {
             log.info("Tick generator thread starts");
             try {
-                for (; ;) {
+                for (; !stop; ) {
                     actionThread.tick();
                     try {
                         sleep(1);
@@ -164,7 +174,7 @@ public class MTScheduler extends SingletonJPSXComponent implements Scheduler {
 
         public void run() {
             log.info("ScheduledAction thread starts");
-            for (; ;) {
+            for (; !stop; ) {
                 long now = sleepUntilWakeupTime();
                 if (logTraceEnabled) {
                     log.trace("Wakeup " + traceTime(now));
@@ -172,7 +182,7 @@ public class MTScheduler extends SingletonJPSXComponent implements Scheduler {
                 // make one pass over the array, providing synchronized access to our data structures
                 // but not holding a lock during a callback
                 int i = 0;
-                for (; ;) {
+                for (; ; ) {
                     ScheduledAction toRun = null;
                     synchronized (this) {
                         if (i >= length) break;
@@ -223,7 +233,7 @@ public class MTScheduler extends SingletonJPSXComponent implements Scheduler {
         }
 
         private long sleepUntilWakeupTime() {
-            for (; ;) {
+            for (; !stop; ) {
                 long t = quartz.nanoTime();
                 if (t >= wakeupTime) return t;
                 synchronized (this) {
@@ -235,6 +245,7 @@ public class MTScheduler extends SingletonJPSXComponent implements Scheduler {
                     }
                 }
             }
+            return 0;
         }
 
         public synchronized void schedule(long time, ScheduledAction action) {

@@ -34,6 +34,7 @@ import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
 import org.jpsx.runtime.util.MiscUtil;
 
 import javax.sound.sampled.*;
+import java.util.Arrays;
 
 import static org.jpsx.api.components.hardware.cd.CDMedia.SECTOR_SIZE_BYTES;
 
@@ -1283,6 +1284,18 @@ public class SPU extends SingletonJPSXComponent implements MemoryMapped, CDAudio
         }
         // phase not yet supported
         return rc;
+    }
+
+    @Override
+    public void close() {
+        if (cdline != null) {
+            cdline.flush();
+            cdline.stop();
+        }
+        Arrays.stream(voices).forEach(v -> {
+            v.line.flush();
+            v.line.stop();
+        });
     }
 }
 

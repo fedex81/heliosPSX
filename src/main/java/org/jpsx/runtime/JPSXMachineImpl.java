@@ -89,10 +89,11 @@ public class JPSXMachineImpl implements JPSXMachine, JPSXMachineLifecycle {
         } else {
             // default implementation is just to run cpu
             RuntimeConnections.CPU_CONTROL.resolve().go();
-            MiscUtil.sleeper().run();
+            //TODO fix
+//            MiscUtil.sleeper().run();
         }
-
-        close();
+//TODO fix
+//        close();
     }
 
     public void addInitializer(int priority, Runnable initializer) {

@@ -51,6 +51,14 @@ public class MiscUtil {
         };
     }
 
+    public static void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     protected static String ALPHA = "0123456789abcdef";
 
     public static int parseHex(String hex) {
