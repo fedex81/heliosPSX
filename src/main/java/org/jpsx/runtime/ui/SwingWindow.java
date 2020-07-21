@@ -174,11 +174,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
                 scrollPane, "Help: " + title, JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void fullScreenAction(ActionEvent doToggle) {
-        if (doToggle == null) {
-            setFullScreen(!fullScreenItem.getState());
-        }
-    }
+    int viewportW, viewportH;
 
     private GraphicsDevice getGraphicsDevice() {
         return jFrame.getGraphicsConfiguration().getDevice();
@@ -213,13 +209,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         });
     }
 
-    @Override
-    public void setFullScreen(boolean value) {
-        SwingUtilities.invokeLater(() -> {
-            fullScreenItem.setState(value);
-            LOG.info("Full screen: " + fullScreenItem.isSelected());
-        });
-    }
+    private Rectangle viewportBounds = new Rectangle();
 
     @Override
     public String getRegionOverride() {
@@ -227,176 +217,23 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
                 map(JCheckBoxMenuItem::getText).findFirst().orElse(null);
     }
 
-    public void initSwing() {
-//        Util.registerJmx(this);
-        GraphicsDevice gd = SwingScreenSupport.setupScreens();
-        fullScreenSize = gd.getDefaultConfiguration().getBounds().getSize();
-        LOG.info("Full screen size: " + fullScreenSize);
-        LOG.info("Emulation viewport size: " + DEFAULT_SCALED_SCREEN_SIZE);
-        LOG.info("Application size: " + DEFAULT_FRAME_SIZE);
+    private void fullScreenAction(ActionEvent doToggle) {
+        boolean val = doToggle != null ? fullScreenItem.getState() : !fullScreenItem.getState();
+        setFullScreen(val);
+    }
 
-        jFrame = new JFrame(FRAME_TITLE_HEAD, gd.getDefaultConfiguration());
-        jFrame.getContentPane().setBackground(Color.BLACK);
-        jFrame.getContentPane().setForeground(Color.BLACK);
-
-        baseD = new Dimension(1024, 513);
-        baseImage = createImage(gd, baseD);
-        destImage = createImage(gd, outputNonScaledScreenSize);
-        renderData = getPixels(baseImage);
-
-        JMenuBar bar = new JMenuBar();
-
-        JMenu menu = new JMenu("File");
-        bar.add(menu);
-
-        JMenu setting = new JMenu("Setting");
-        bar.add(setting);
-
-        JMenuItem pauseItem = new JMenuItem("Pause");
-        addKeyAction(pauseItem, TOGGLE_PAUSE, e -> handleSystemEvent(TOGGLE_PAUSE, null, null));
-        setting.add(pauseItem);
-
-        JMenuItem resetItem = new JMenuItem("Hard Reset");
-        addKeyAction(resetItem, RESET, e -> mainEmu.reset());
-        setting.add(resetItem);
-
-        JMenuItem softResetItem = new JMenuItem("Soft Reset");
-        addKeyAction(softResetItem, SOFT_RESET, e -> handleSystemEvent(SOFT_RESET, null, null));
-        setting.add(softResetItem);
-
-        JMenu regionMenu = new JMenu("Region");
-        setting.add(regionMenu);
-
-        JMenu screensMenu = new JMenu("Screens");
-        createAddScreenItems(screensMenu);
-        setting.add(screensMenu);
-
-        JMenu inputMenu = new JMenu("Input");
-        reloadControllers(InputProvider.DEFAULT_CONTROLLERS);
-        inputMenusMap.values().forEach(inputMenu::add);
-        setting.add(inputMenu);
-
-        JMenu menuView = new JMenu("View");
-        bar.add(menuView);
-
-        regionItems = createRegionItems();
-        regionItems.forEach(regionMenu::add);
-
-        fullScreenItem = new JCheckBoxMenuItem("Full Screen", false);
-        addKeyAction(fullScreenItem, TOGGLE_FULL_SCREEN, e -> fullScreenAction(e));
-        menuView.add(fullScreenItem);
-
-        muteItem = new JCheckBoxMenuItem("Enable Sound", true);
-        addKeyAction(muteItem, TOGGLE_MUTE, e -> handleSystemEvent(TOGGLE_MUTE, null, null));
-        menuView.add(muteItem);
-
-        JMenu helpMenu = new JMenu("Help");
-        bar.add(helpMenu);
-        bar.add(Box.createHorizontalGlue());
-        bar.add(perfLabel);
-
-        JMenuItem loadRomItem = new JMenuItem("Load ROM");
-        addKeyAction(loadRomItem, NEW_ROM, e -> handleNewRomDialog());
-
-        recentFilesMenu = new JMenu("Recent Files");
-        recentFilesItems = new JMenuItem[PrefStore.recentFileTotal];
-        IntStream.range(0, recentFilesItems.length).forEach(i -> {
-            recentFilesItems[i] = new JMenuItem();
-            addKeyAction(recentFilesItems[i], NONE, e -> handleNewRomRecent(recentFilesItems[i].getToolTipText()));
-            recentFilesMenu.add(recentFilesItems[i]);
+    @Override
+    public void setFullScreen(boolean value) {
+        SwingUtilities.invokeLater(() -> {
+            fullScreenItem.setState(value);
+            LOG.info("Full screen: " + fullScreenItem.isSelected());
+            jFrame.setVisible(false);
+            GraphicsDevice gd = SwingScreenSupport.getGraphicsDevice();
+            gd.setFullScreenWindow(value ? jFrame : null);
+            viewportW = jFrame.getWidth();
+            viewportH = jFrame.getHeight();
+            jFrame.setVisible(true);
         });
-        PrefStore.initPrefs();
-        reloadRecentFiles();
-
-        JMenuItem closeRomItem = new JMenuItem("Close ROM");
-        addKeyAction(closeRomItem, CLOSE_ROM, e -> handleSystemEvent(CLOSE_ROM, null, null));
-
-        JMenuItem loadStateItem = new JMenuItem("Load State");
-        addKeyAction(loadStateItem, LOAD_STATE, e -> handleLoadState());
-
-        JMenuItem saveStateItem = new JMenuItem("Save State");
-        addKeyAction(saveStateItem, SAVE_STATE, e -> handleSaveState());
-
-        JMenuItem quickSaveStateItem = new JMenuItem("Quick Save State");
-        addKeyAction(quickSaveStateItem, QUICK_SAVE, e -> handleQuickSaveState());
-
-        JMenuItem quickLoadStateItem = new JMenuItem("Quick Load State");
-        addKeyAction(quickLoadStateItem, QUICK_LOAD, e -> handleQuickLoadState());
-
-        JMenuItem exitItem = new JMenuItem("Exit");
-        addKeyAction(exitItem, CLOSE_APP, e -> {
-            handleSystemEvent(CLOSE_APP, null, null);
-            System.exit(0);
-        });
-
-        JMenuItem aboutItem = new JMenuItem("About");
-        addAction(aboutItem, e -> showHelpMessage(aboutItem.getText(), getAboutString()));
-
-        JMenuItem creditsItem = new JMenuItem("Credits");
-        addAction(creditsItem, e -> showHelpMessage(creditsItem.getText(),
-                FileLoader.readFileContentAsString("CREDITS.md")
-        ));
-
-        JMenuItem keyBindingsItem = new JMenuItem("Key Bindings");
-        addAction(keyBindingsItem, e -> showHelpMessage(keyBindingsItem.getText(),
-//                KeyBindingsHandler.toConfigString()
-                ""
-        ));
-
-        JMenuItem readmeItem = new JMenuItem("Readme");
-        addAction(readmeItem, e -> showHelpMessage(readmeItem.getText(),
-                FileLoader.readFileContentAsString("README.md")
-        ));
-
-        JMenuItem licenseItem = new JMenuItem("License");
-        addAction(licenseItem, e -> showHelpMessage(licenseItem.getText(),
-                FileLoader.readFileContentAsString("LICENSE.md")
-        ));
-
-        JMenuItem historyItem = new JMenuItem("History");
-        addAction(historyItem, e -> showHelpMessage(historyItem.getText(),
-                FileLoader.readFileContentAsString("HISTORY.md")));
-
-        menu.add(loadRomItem);
-        menu.add(recentFilesMenu);
-        menu.add(closeRomItem);
-        menu.add(loadStateItem);
-        menu.add(saveStateItem);
-        menu.add(quickLoadStateItem);
-        menu.add(quickSaveStateItem);
-        menu.add(exitItem);
-        helpMenu.add(aboutItem);
-        helpMenu.add(keyBindingsItem);
-        helpMenu.add(readmeItem);
-        helpMenu.add(creditsItem);
-        helpMenu.add(historyItem);
-        helpMenu.add(licenseItem);
-
-        AbstractAction debugUiAction = toAbstractAction("debugUI", e -> showDebugInfo(!showDebug));
-        actionMap.put(SET_DEBUG_UI, debugUiAction);
-
-        jFrame.setMinimumSize(DEFAULT_FRAME_SIZE);
-        jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        jFrame.setResizable(true);
-        jFrame.setJMenuBar(bar);
-        jFrame.setVisible(true);
-
-        screenCanvas = new Canvas(gd.getDefaultConfiguration());
-        screenCanvas.setIgnoreRepaint(true);
-        jFrame.add(screenCanvas, -1);
-        screenCanvas.createBufferStrategy(2);
-        do {
-            strategy = screenCanvas.getBufferStrategy();
-        } while (strategy == null);
-        jFrame.setVisible(false);
-        jFrame.pack();
-
-        //get the center location and then reset it
-        jFrame.setLocationRelativeTo(null);
-        Point centerPoint = jFrame.getLocation();
-        jFrame.setLocation(gd.getDefaultConfiguration().getBounds().x + centerPoint.x,
-                gd.getDefaultConfiguration().getBounds().y + centerPoint.y);
-        jFrame.setVisible(true);
     }
 
     private void showLabel(String label) {
@@ -667,19 +504,193 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         refreshStrategy();
     }
 
+    public void initSwing() {
+//        Util.registerJmx(this);
+        GraphicsDevice gd = SwingScreenSupport.setupScreens();
+        fullScreenSize = gd.getDefaultConfiguration().getBounds().getSize();
+        LOG.info("Full screen size: " + fullScreenSize);
+        LOG.info("Emulation viewport size: " + DEFAULT_SCALED_SCREEN_SIZE);
+        LOG.info("Application size: " + DEFAULT_FRAME_SIZE);
+
+        jFrame = new JFrame(FRAME_TITLE_HEAD, gd.getDefaultConfiguration());
+        jFrame.getContentPane().setBackground(Color.BLACK);
+        jFrame.getContentPane().setForeground(Color.BLACK);
+
+        baseD = new Dimension(1024, 513);
+        baseImage = createImage(gd, baseD);
+        destImage = createImage(gd, outputNonScaledScreenSize);
+        renderData = getPixels(baseImage);
+
+        JMenuBar bar = new JMenuBar();
+
+        JMenu menu = new JMenu("File");
+        bar.add(menu);
+
+        JMenu setting = new JMenu("Setting");
+        bar.add(setting);
+
+        JMenuItem pauseItem = new JMenuItem("Pause");
+        addKeyAction(pauseItem, TOGGLE_PAUSE, e -> handleSystemEvent(TOGGLE_PAUSE, null, null));
+        setting.add(pauseItem);
+
+        JMenuItem resetItem = new JMenuItem("Hard Reset");
+        addKeyAction(resetItem, RESET, e -> mainEmu.reset());
+        setting.add(resetItem);
+
+        JMenuItem softResetItem = new JMenuItem("Soft Reset");
+        addKeyAction(softResetItem, SOFT_RESET, e -> handleSystemEvent(SOFT_RESET, null, null));
+        setting.add(softResetItem);
+
+        JMenu regionMenu = new JMenu("Region");
+        setting.add(regionMenu);
+
+        JMenu screensMenu = new JMenu("Screens");
+        createAddScreenItems(screensMenu);
+        setting.add(screensMenu);
+
+        JMenu inputMenu = new JMenu("Input");
+        reloadControllers(InputProvider.DEFAULT_CONTROLLERS);
+        inputMenusMap.values().forEach(inputMenu::add);
+        setting.add(inputMenu);
+
+        JMenu menuView = new JMenu("View");
+        bar.add(menuView);
+
+        regionItems = createRegionItems();
+        regionItems.forEach(regionMenu::add);
+
+        fullScreenItem = new JCheckBoxMenuItem("Full Screen", false);
+        addKeyAction(fullScreenItem, TOGGLE_FULL_SCREEN, e -> fullScreenAction(e));
+        menuView.add(fullScreenItem);
+
+        muteItem = new JCheckBoxMenuItem("Enable Sound", true);
+        addKeyAction(muteItem, TOGGLE_MUTE, e -> handleSystemEvent(TOGGLE_MUTE, null, null));
+        menuView.add(muteItem);
+
+        JMenu helpMenu = new JMenu("Help");
+        bar.add(helpMenu);
+        bar.add(Box.createHorizontalGlue());
+        bar.add(perfLabel);
+
+        JMenuItem loadRomItem = new JMenuItem("Load ROM");
+        addKeyAction(loadRomItem, NEW_ROM, e -> handleNewRomDialog());
+
+        recentFilesMenu = new JMenu("Recent Files");
+        recentFilesItems = new JMenuItem[PrefStore.recentFileTotal];
+        IntStream.range(0, recentFilesItems.length).forEach(i -> {
+            recentFilesItems[i] = new JMenuItem();
+            addKeyAction(recentFilesItems[i], NONE, e -> handleNewRomRecent(recentFilesItems[i].getToolTipText()));
+            recentFilesMenu.add(recentFilesItems[i]);
+        });
+        PrefStore.initPrefs();
+        reloadRecentFiles();
+
+        JMenuItem closeRomItem = new JMenuItem("Close ROM");
+        addKeyAction(closeRomItem, CLOSE_ROM, e -> handleSystemEvent(CLOSE_ROM, null, null));
+
+        JMenuItem loadStateItem = new JMenuItem("Load State");
+        addKeyAction(loadStateItem, LOAD_STATE, e -> handleLoadState());
+
+        JMenuItem saveStateItem = new JMenuItem("Save State");
+        addKeyAction(saveStateItem, SAVE_STATE, e -> handleSaveState());
+
+        JMenuItem quickSaveStateItem = new JMenuItem("Quick Save State");
+        addKeyAction(quickSaveStateItem, QUICK_SAVE, e -> handleQuickSaveState());
+
+        JMenuItem quickLoadStateItem = new JMenuItem("Quick Load State");
+        addKeyAction(quickLoadStateItem, QUICK_LOAD, e -> handleQuickLoadState());
+
+        JMenuItem exitItem = new JMenuItem("Exit");
+        addKeyAction(exitItem, CLOSE_APP, e -> {
+            handleSystemEvent(CLOSE_APP, null, null);
+            System.exit(0);
+        });
+
+        JMenuItem aboutItem = new JMenuItem("About");
+        addAction(aboutItem, e -> showHelpMessage(aboutItem.getText(), getAboutString()));
+
+        JMenuItem creditsItem = new JMenuItem("Credits");
+        addAction(creditsItem, e -> showHelpMessage(creditsItem.getText(),
+                FileLoader.readFileContentAsString("CREDITS.md")
+        ));
+
+        JMenuItem keyBindingsItem = new JMenuItem("Key Bindings");
+        addAction(keyBindingsItem, e -> showHelpMessage(keyBindingsItem.getText(),
+//                KeyBindingsHandler.toConfigString()
+                ""
+        ));
+
+        JMenuItem readmeItem = new JMenuItem("Readme");
+        addAction(readmeItem, e -> showHelpMessage(readmeItem.getText(),
+                FileLoader.readFileContentAsString("README.md")
+        ));
+
+        JMenuItem licenseItem = new JMenuItem("License");
+        addAction(licenseItem, e -> showHelpMessage(licenseItem.getText(),
+                FileLoader.readFileContentAsString("LICENSE.md")
+        ));
+
+        JMenuItem historyItem = new JMenuItem("History");
+        addAction(historyItem, e -> showHelpMessage(historyItem.getText(),
+                FileLoader.readFileContentAsString("HISTORY.md")));
+
+        menu.add(loadRomItem);
+        menu.add(recentFilesMenu);
+        menu.add(closeRomItem);
+        menu.add(loadStateItem);
+        menu.add(saveStateItem);
+        menu.add(quickLoadStateItem);
+        menu.add(quickSaveStateItem);
+        menu.add(exitItem);
+        helpMenu.add(aboutItem);
+        helpMenu.add(keyBindingsItem);
+        helpMenu.add(readmeItem);
+        helpMenu.add(creditsItem);
+        helpMenu.add(historyItem);
+        helpMenu.add(licenseItem);
+
+        AbstractAction debugUiAction = toAbstractAction("debugUI", e -> showDebugInfo(!showDebug));
+        actionMap.put(SET_DEBUG_UI, debugUiAction);
+
+        jFrame.setMinimumSize(DEFAULT_FRAME_SIZE);
+        jFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        jFrame.setResizable(true);
+        jFrame.setJMenuBar(bar);
+        jFrame.setVisible(true);
+
+        screenCanvas = new Canvas(gd.getDefaultConfiguration());
+        screenCanvas.setIgnoreRepaint(true);
+        jFrame.add(screenCanvas, -1);
+        screenCanvas.createBufferStrategy(2);
+        do {
+            strategy = screenCanvas.getBufferStrategy();
+        } while (strategy == null);
+        jFrame.setVisible(false);
+        jFrame.pack();
+
+        //get the center location and then reset it
+        jFrame.setLocationRelativeTo(null);
+        Point centerPoint = jFrame.getLocation();
+        jFrame.setLocation(gd.getDefaultConfiguration().getBounds().x + centerPoint.x,
+                gd.getDefaultConfiguration().getBounds().y + centerPoint.y);
+
+        viewportH = jFrame.getHeight();
+        viewportW = jFrame.getWidth();
+
+        jFrame.setVisible(true);
+    }
+
     private void refreshStrategy() {
         // Update Graphics
         Graphics2D bg = null;
         boolean rgb24 = displayManager.getRGB24bit();
         GPU.setVRAMFormat(rgb24);
-        updateDimension();
-        double scaleW = 1, scaleH = 1;
-        if (dimension.width != DEFAULT_X || dimension.height != DEFAULT_Y) {
-            scaleW = scale * DEFAULT_X / dimension.width;
-            scaleH = scale * DEFAULT_Y / dimension.height;
-        }
-        int w = (int) (dimension.width * scaleW);
-        int h = (int) (dimension.height * scaleH);
+        updateDimension(); //internal ps1 framebuffer size
+        viewportBounds = updateViewportBounds();
+        int h = viewportBounds.height;
+        int w = viewportBounds.width;
+        int offsetW = viewportBounds.x;
+        int offsetH = viewportBounds.y;
         do {
             try {
                 bg = getBuffer();
@@ -687,13 +698,37 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
                     bg.setColor(Color.BLACK);
                     bg.fillRect(0, 0, w, h);
                 } else {
-                    bg.drawImage(destImage, 0, 0, w, h
+                    bg.drawImage(destImage, offsetW, offsetH, w + offsetW, h + offsetH
                             , 0, 0, dimension.width, dimension.height, null);
                 }
             } finally {
                 Optional.ofNullable(bg).ifPresent(Graphics2D::dispose);
             }
         } while (!updateScreen());
+    }
+
+    private Rectangle updateViewportBounds() {
+        Dimension d = null;
+        double scaleW = 1, scaleH = 1;
+        if (dimension.width != DEFAULT_X || dimension.height != DEFAULT_Y) {
+            scaleW = scale * DEFAULT_X / dimension.width;
+            scaleH = scale * DEFAULT_Y / dimension.height;
+        }
+        int w = (int) (dimension.width * scaleW);
+        int h = (int) (dimension.height * scaleH);
+        boolean fullScreen = fullScreenItem.getState();
+        int offsetW = 0, offsetH = 0;
+        if (fullScreen) {
+            Dimension dim = new Dimension(w, h);
+            Dimension fs = new Dimension(viewportW, viewportH);
+            double ratio = ScreenSizeHelper.getFullScreenScaleFactor(fs, dim);
+            w *= ratio;
+            h *= ratio;
+            offsetW = Math.max(0, viewportW - w) / 2;
+            offsetH = Math.max(0, viewportH - h) / 2;
+        }
+        viewportBounds.setBounds(offsetW, offsetH, w, h);
+        return viewportBounds;
     }
 
     private boolean updateScreen() {

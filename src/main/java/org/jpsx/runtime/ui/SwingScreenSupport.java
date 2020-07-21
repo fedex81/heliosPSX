@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  */
 public class SwingScreenSupport {
 
-    public static final int DEFAULT_SCREEN = 1;
+    public static final int DEFAULT_SCREEN = 0;
 
     private static final Logger LOG = Logger.getLogger(SwingScreenSupport.class.getSimpleName());
 
@@ -31,6 +31,10 @@ public class SwingScreenSupport {
         GraphicsDevice gd = graphicsDevices[currentScreen];
         LOG.info("Initial screen: " + gd.getIDstring());
         return gd;
+    }
+
+    public static GraphicsDevice getGraphicsDevice() {
+        return graphicsDevices[currentScreen];
     }
 
     public static List<String> detectScreens() {
