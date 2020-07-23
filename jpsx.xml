@@ -107,6 +107,7 @@
     <components id="swing-display">
         <component id="display" classname="org.jpsx.runtime.ui.SwingWindowPsx">
             <property name="hasRomFile" value="${hasRomFile}"/>
+            <property name="romFile" value="${image}"/>
         </component>
     </components>
 

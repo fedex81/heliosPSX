@@ -79,7 +79,7 @@ public class JPSXLauncher {
                 machineId = args[i];
             }
         }
-        vars.put("hasRomFile", "true");
+        vars.put("hasRomFile", "false");
         prepareLaunch(machineId, configFile, log4jFile, vars);
     }
 

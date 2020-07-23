@@ -21,15 +21,10 @@ package org.jpsx.runtime.ui;
 
 import com.google.common.base.Strings;
 import org.apache.log4j.Logger;
-import org.jpsx.api.components.hardware.gpu.Display;
-import org.jpsx.api.components.hardware.gpu.DisplayManager;
-import org.jpsx.bootstrap.JPSXLauncher;
-import org.jpsx.runtime.RuntimeConnections;
 import org.jpsx.runtime.SingletonJPSXComponent;
-import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
-import org.jpsx.runtime.components.hardware.gpu.GPU;
 import org.jpsx.runtime.components.hardware.sio.input.InputProvider;
 import org.jpsx.runtime.components.hardware.sio.input.InputProvider.PlayerNumber;
+import org.jpsx.runtime.ui.input.KeyBindingsHandler;
 import org.jpsx.runtime.util.*;
 import org.jpsx.runtime.util.SystemProvider.SystemEvent;
 
@@ -51,17 +46,11 @@ import static org.jpsx.runtime.util.FileLoader.QUICK_SAVE_PATH;
 import static org.jpsx.runtime.util.SwingScreenSupport.*;
 import static org.jpsx.runtime.util.SystemProvider.SystemEvent.*;
 
-public abstract class SwingWindow extends SingletonJPSXComponent implements DisplayWindow, Display {
+public abstract class SwingWindow extends SingletonJPSXComponent implements DisplayWindow {
 
     private static final Logger LOG = Logger.getLogger(SwingWindow.class.getSimpleName());
 
-    private Dimension fullScreenSize;
-    //when scaling is slow set this to FALSE
-    private static final boolean UI_SCALE_ON_EDT
-            = Boolean.valueOf(System.getProperty("ui.scale.on.edt", "true"));
-    private Dimension outputNonScaledScreenSize = DEFAULT_SCALED_SCREEN_SIZE;
-    private Dimension outputScreenSize = DEFAULT_SCALED_SCREEN_SIZE;
-
+    private static final Dimension frameBufferSize = new Dimension(1024, 513);
     private BufferedImage baseImage;
     private Image destImage;
     private double scale = DEFAULT_SCALE_FACTOR;
@@ -92,11 +81,12 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
             cursorImg, new Point(0, 0), "blank cursor");
     private int showInfoCount = SHOW_INFO_FRAMES_DELAY;
     private Optional<String> actionInfo = Optional.empty();
-    private DisplayManager displayManager;
-    private boolean hasRomFile;
 
-    private int[] renderData;
-    private Dimension baseD;
+    //rendering stuff
+    protected int[] renderData;
+    private int viewportW, viewportH;
+    private Dimension dimension = new Dimension();
+    private int x, y;
 
     public SwingWindow() {
         this(null);
@@ -114,29 +104,18 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
 
     protected abstract KeyStroke getAcceleratorKey(SystemEvent event);
 
+    public abstract void refresh();
+
     @Override
     public void init() {
         super.init();
         initSwing();
-        HardwareComponentConnections.DISPLAY.set(this);
-        RuntimeConnections.KEY_LISTENERS.add(setupFrameKeyListener());
-        hasRomFile = Boolean.valueOf(getProperty("hasRomFile", "false"));
-    }
-
-    @Override
-    public void resolveConnections() {
-        super.resolveConnections();
-        displayManager = HardwareComponentConnections.DISPLAY_MANAGER.resolve();
-        if (!hasRomFile) {
-            RuntimeConnections.MAIN.set(MiscUtil.sleeper());
-        }
     }
 
     public void setTitle(String title) {
         jFrame.setTitle(APP_NAME + mainEmu.getSystemType().getShortName() + " " + VERSION + " - " + title);
         reloadRecentFiles();
     }
-
 
     private void addKeyAction(JMenuItem component, SystemEvent event, ActionListener l) {
         AbstractAction action = toAbstractAction(component.getText(), l);
@@ -173,7 +152,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
                 scrollPane, "Help: " + title, JOptionPane.INFORMATION_MESSAGE);
     }
 
-    int viewportW, viewportH;
+
 
     private GraphicsDevice getGraphicsDevice() {
         return jFrame.getGraphicsConfiguration().getDevice();
@@ -218,21 +197,25 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
 
     private void fullScreenAction(ActionEvent doToggle) {
         boolean val = doToggle != null ? fullScreenItem.getState() : !fullScreenItem.getState();
-        setFullScreen(val);
+        SwingUtilities.invokeLater(() -> setFullScreen(val));
     }
 
     @Override
     public void setFullScreen(boolean value) {
-        SwingUtilities.invokeLater(() -> {
-            fullScreenItem.setState(value);
-            LOG.info("Full screen: " + fullScreenItem.isSelected());
-            jFrame.setVisible(false);
-            GraphicsDevice gd = SwingScreenSupport.getGraphicsDevice();
-            gd.setFullScreenWindow(value ? jFrame : null);
-            viewportW = jFrame.getWidth();
-            viewportH = jFrame.getHeight();
-            jFrame.setVisible(true);
-        });
+        fullScreenItem.setState(value);
+        LOG.info("Full screen: " + fullScreenItem.isSelected());
+        jFrame.setVisible(false);
+        GraphicsDevice gd = SwingScreenSupport.getGraphicsDevice();
+        gd.setFullScreenWindow(value ? jFrame : null);
+        if (!value) {
+            jFrame.setSize(DEFAULT_BASE_SCREEN_SIZE);
+        }
+        viewportW = jFrame.getWidth();
+        viewportH = jFrame.getHeight();
+
+        jFrame.setVisible(true);
+        jFrame.invalidate();
+        jFrame.repaint();
     }
 
     private void showLabel(String label) {
@@ -319,7 +302,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         handleNewRom(new File(path));
     }
 
-    private void handleNewRom(File f) {
+    protected void handleNewRom(File f) {
         handleSystemEvent(CLOSE_ROM, null, null);
         showInfo(NEW_ROM + ": " + f.getName());
         resetScreen();
@@ -328,7 +311,6 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
             jFrame.repaint();
             jFrame.dispose();
         });
-        SwingUtilities.invokeLater(() -> JPSXLauncher.launch(f));
     }
 
     private SystemProvider getMainEmu() {
@@ -358,7 +340,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
     }
 
     //TODO this is necessary in fullScreenMode
-    private KeyListener setupFrameKeyListener() {
+    protected KeyListener setupFrameKeyListener() {
         KeyListener kl = new KeyAdapter() {
 
             @Override
@@ -366,8 +348,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
                 SystemProvider mainEmu = getMainEmu();
                 KeyStroke keyStroke = KeyStroke.getKeyStrokeForEvent(e);
 //                LOG.info(keyStroke.toString());
-                SystemEvent event = null; //TODO
-                // KeyBindingsHandler.getInstance().getSystemEventIfAny(keyStroke);
+                SystemEvent event = KeyBindingsHandler.getInstance().getSystemEventIfAny(keyStroke);
                 if (event != null && event != NONE) {
                     //if the menuBar is visible it will handle the event, otherwise we need to perform the action here
                     boolean menuVisible = jFrame.getJMenuBar().isVisible();
@@ -467,24 +448,6 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         }
     }
 
-    @Override
-    public void initDisplay() {
-        addKeyListener(RuntimeConnections.KEY_LISTENERS.resolve());
-    }
-
-    @Override
-    public int[] acquireDisplayBuffer() {
-        return renderData;
-    }
-
-    @Override
-    public void releaseDisplayBuffer() {
-
-    }
-
-    private Dimension dimension = new Dimension();
-    private int x, y;
-
     private Graphics2D getBuffer() {
         if (graphics == null) {
             try {
@@ -497,27 +460,17 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         return graphics;
     }
 
-
-    @Override
-    public void refresh() {
-        refreshStrategy();
-    }
-
     public void initSwing() {
 //        Util.registerJmx(this);
         GraphicsDevice gd = SwingScreenSupport.setupScreens();
-        fullScreenSize = gd.getDefaultConfiguration().getBounds().getSize();
-        LOG.info("Full screen size: " + fullScreenSize);
-        LOG.info("Emulation viewport size: " + DEFAULT_SCALED_SCREEN_SIZE);
-        LOG.info("Application size: " + DEFAULT_FRAME_SIZE);
+        LOG.info("Emulation viewport size: " + DEFAULT_BASE_SCREEN_SIZE);
 
         jFrame = new JFrame(FRAME_TITLE_HEAD, gd.getDefaultConfiguration());
         jFrame.getContentPane().setBackground(Color.BLACK);
         jFrame.getContentPane().setForeground(Color.BLACK);
 
-        baseD = new Dimension(1024, 513);
-        baseImage = createImage(gd, baseD);
-        destImage = createImage(gd, outputNonScaledScreenSize);
+        baseImage = createImage(gd, frameBufferSize);
+        destImage = createImage(gd, DEFAULT_BASE_SCREEN_SIZE);
         renderData = getPixels(baseImage);
 
         JMenuBar bar = new JMenuBar();
@@ -615,8 +568,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
 
         JMenuItem keyBindingsItem = new JMenuItem("Key Bindings");
         addAction(keyBindingsItem, e -> showHelpMessage(keyBindingsItem.getText(),
-//                KeyBindingsHandler.toConfigString()
-                ""
+                KeyBindingsHandler.toConfigString()
         ));
 
         JMenuItem readmeItem = new JMenuItem("Readme");
@@ -679,12 +631,9 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         jFrame.setVisible(true);
     }
 
-    private void refreshStrategy() {
+    protected void refreshStrategy(boolean isBlanked) {
         // Update Graphics
         Graphics2D bg = null;
-        boolean rgb24 = displayManager.getRGB24bit();
-        GPU.setVRAMFormat(rgb24);
-        updateDimension(); //internal ps1 framebuffer size
         viewportBounds = updateViewportBounds();
         int h = viewportBounds.height;
         int w = viewportBounds.width;
@@ -693,7 +642,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         do {
             try {
                 bg = getBuffer();
-                if (displayManager.getBlanked()) {
+                if (isBlanked) {
                     bg.setColor(Color.BLACK);
                     bg.fillRect(0, 0, w, h);
                 } else {
@@ -742,12 +691,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         }
     }
 
-    private boolean updateDimension() {
-        int w = displayManager.getPixelWidth();
-        int h = displayManager.getPixelHeight();
-        int newX = displayManager.getXOrigin();
-        int newY = displayManager.getYOrigin();
-
+    protected boolean updateDimension(boolean force, int w, int h, int newX, int newY) {
         if (w * h == 0) {
             return false;
         }
@@ -763,6 +707,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
             x = newX;
             y = newY;
         }
+        change |= force;
         if (change) {
             destImage = baseImage.getSubimage(x, y, w, h);
         }

@@ -30,13 +30,10 @@ public class SwingScreenSupport {
 
     public static final boolean FIX_ASPECT_RATIO =
             Boolean.valueOf(System.getProperty("ui.fix.aspect.ratio", "true"));
-
-    public static Dimension DEFAULT_SCALED_SCREEN_SIZE = new Dimension(DEFAULT_X * DEFAULT_SCALE_FACTOR,
-            DEFAULT_Y * DEFAULT_SCALE_FACTOR);
     public static Dimension DEFAULT_BASE_SCREEN_SIZE = new Dimension(DEFAULT_X,
             DEFAULT_Y);
-    public static Dimension DEFAULT_FRAME_SIZE = new Dimension((int) (DEFAULT_SCALED_SCREEN_SIZE.width * 1.02),
-            (int) (DEFAULT_SCALED_SCREEN_SIZE.height * 1.10));
+    public static Dimension DEFAULT_FRAME_SIZE = new Dimension((int) (DEFAULT_BASE_SCREEN_SIZE.width * 1.02),
+            (int) (DEFAULT_BASE_SCREEN_SIZE.height * 1.10));
 
     private static final Logger LOG = Logger.getLogger(SwingScreenSupport.class.getSimpleName());
 

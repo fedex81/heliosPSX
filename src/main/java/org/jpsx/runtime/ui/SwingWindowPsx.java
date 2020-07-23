@@ -21,21 +21,88 @@ package org.jpsx.runtime.ui;
 
 import com.google.common.base.Strings;
 import org.apache.log4j.Logger;
+import org.jpsx.api.components.hardware.gpu.Display;
+import org.jpsx.api.components.hardware.gpu.DisplayManager;
+import org.jpsx.bootstrap.JPSXLauncher;
 import org.jpsx.runtime.RuntimeConnections;
 import org.jpsx.runtime.components.core.R3000Impl;
+import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
+import org.jpsx.runtime.components.hardware.gpu.GPU;
 import org.jpsx.runtime.ui.input.KeyBindingsHandler;
 import org.jpsx.runtime.util.SystemProvider;
 import org.jpsx.runtime.util.SystemProvider.SystemEvent;
 
 import javax.swing.*;
+import java.io.File;
 
-public class SwingWindowPsx extends SwingWindow {
+public class SwingWindowPsx extends SwingWindow implements Display {
 
     private static final Logger LOG = Logger.getLogger(SwingWindowPsx.class.getSimpleName());
+    private DisplayManager displayManager;
+    private boolean hasRomFile;
+    private String filePath;
+    private String fileName;
 
     public SwingWindowPsx() {
         super(null);
         mainEmu = createSystemProvider();
+    }
+
+    @Override
+    public void init() {
+        super.init();
+        initTitle();
+        HardwareComponentConnections.DISPLAY.set(this);
+        RuntimeConnections.KEY_LISTENERS.add(setupFrameKeyListener());
+    }
+
+    private void initTitle() {
+        hasRomFile = Boolean.valueOf(getProperty("hasRomFile", "false"));
+        filePath = getProperty("romFile", "");
+        if (hasRomFile) {
+            if (!Strings.isNullOrEmpty(filePath)) {
+                fileName = new File(filePath).getName();
+                setTitle(fileName);
+            }
+        }
+    }
+
+    @Override
+    public void refresh() {
+        boolean rgb24 = displayManager.getRGB24bit();
+        GPU.setVRAMFormat(rgb24);
+        int w = displayManager.getPixelWidth();
+        int h = displayManager.getPixelHeight();
+        int newX = displayManager.getXOrigin();
+        int newY = displayManager.getYOrigin();
+        updateDimension(false, w, h, newX, newY);
+        refreshStrategy(displayManager.getBlanked());
+    }
+
+    @Override
+    public void resolveConnections() {
+        super.resolveConnections();
+        displayManager = HardwareComponentConnections.DISPLAY_MANAGER.resolve();
+    }
+
+    protected void handleNewRom(File f) {
+        super.handleNewRom(f);
+        SwingUtilities.invokeLater(() -> JPSXLauncher.launch(f));
+    }
+
+    @Override
+    public void initDisplay() {
+        addKeyListener(RuntimeConnections.KEY_LISTENERS.resolve());
+    }
+
+    @Override
+    public int[] acquireDisplayBuffer() {
+        return renderData;
+    }
+
+    @Override
+    public void releaseDisplayBuffer() {
+
     }
 
     @Override
@@ -77,7 +144,7 @@ public class SwingWindowPsx extends SwingWindow {
 
             @Override
             public String getRomName() {
-                return null;
+                return Strings.isNullOrEmpty(fileName) ? null : fileName;
             }
         };
     }
