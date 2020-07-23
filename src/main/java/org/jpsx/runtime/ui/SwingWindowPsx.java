@@ -23,7 +23,9 @@ import com.google.common.base.Strings;
 import org.apache.log4j.Logger;
 import org.jpsx.runtime.RuntimeConnections;
 import org.jpsx.runtime.components.core.R3000Impl;
-import org.jpsx.runtime.ui.SystemProvider.SystemEvent;
+import org.jpsx.runtime.ui.input.KeyBindingsHandler;
+import org.jpsx.runtime.util.SystemProvider;
+import org.jpsx.runtime.util.SystemProvider.SystemEvent;
 
 import javax.swing.*;
 
@@ -42,10 +44,9 @@ public class SwingWindowPsx extends SwingWindow {
         showInfo(event + (Strings.isNullOrEmpty(msg) ? "" : ": " + msg));
     }
 
-    //TODO
     @Override
     protected KeyStroke getAcceleratorKey(SystemEvent event) {
-        return null;
+        return KeyBindingsHandler.getInstance().getKeyStrokeForEvent(event);
     }
 
     private SystemProvider createSystemProvider() {

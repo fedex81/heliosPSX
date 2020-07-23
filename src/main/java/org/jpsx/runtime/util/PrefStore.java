@@ -17,7 +17,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.jpsx.runtime.ui;
+package org.jpsx.runtime.util;
 
 import org.apache.log4j.Logger;
 

@@ -30,9 +30,8 @@ import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
 import org.jpsx.runtime.components.hardware.gpu.GPU;
 import org.jpsx.runtime.components.hardware.sio.input.InputProvider;
 import org.jpsx.runtime.components.hardware.sio.input.InputProvider.PlayerNumber;
-import org.jpsx.runtime.ui.SystemProvider.SystemEvent;
-import org.jpsx.runtime.util.FileLoader;
-import org.jpsx.runtime.util.MiscUtil;
+import org.jpsx.runtime.util.*;
+import org.jpsx.runtime.util.SystemProvider.SystemEvent;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileFilter;
@@ -48,9 +47,9 @@ import java.util.List;
 import java.util.*;
 import java.util.stream.IntStream;
 
-import static org.jpsx.runtime.ui.ScreenSizeHelper.*;
-import static org.jpsx.runtime.ui.SystemProvider.SystemEvent.*;
 import static org.jpsx.runtime.util.FileLoader.QUICK_SAVE_PATH;
+import static org.jpsx.runtime.util.SwingScreenSupport.*;
+import static org.jpsx.runtime.util.SystemProvider.SystemEvent.*;
 
 public abstract class SwingWindow extends SingletonJPSXComponent implements DisplayWindow, Display {
 
@@ -721,7 +720,7 @@ public abstract class SwingWindow extends SingletonJPSXComponent implements Disp
         if (fullScreen) {
             Dimension dim = new Dimension(w, h);
             Dimension fs = new Dimension(viewportW, viewportH);
-            double ratio = ScreenSizeHelper.getFullScreenScaleFactor(fs, dim);
+            double ratio = getFullScreenScaleFactor(fs, dim);
             w *= ratio;
             h *= ratio;
             offsetW = Math.max(0, viewportW - w) / 2;

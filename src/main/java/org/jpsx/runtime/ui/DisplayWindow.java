@@ -19,6 +19,8 @@
 
 package org.jpsx.runtime.ui;
 
+import org.jpsx.runtime.util.SystemProvider;
+
 import java.awt.event.KeyListener;
 import java.time.LocalDate;
 import java.util.Collection;

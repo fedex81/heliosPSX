@@ -21,10 +21,16 @@ package org.jpsx.runtime.components.hardware.sio;
 import org.jpsx.bootstrap.util.CollectionsFactory;
 import org.jpsx.runtime.RuntimeConnections;
 import org.jpsx.runtime.components.hardware.HardwareComponentConnections;
+import org.jpsx.runtime.components.hardware.sio.input.InputProvider;
+import org.jpsx.runtime.components.hardware.sio.input.JoypadProvider.JoypadButton;
+import org.jpsx.runtime.ui.input.KeyboardInputHelper;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.Map;
+
+import static org.jpsx.runtime.components.hardware.sio.input.JoypadProvider.JoypadButton.*;
+import static org.jpsx.runtime.ui.input.KeyboardInputHelper.keyboardBindings;
 
 // todo allow different mappings
 public class AWTKeyboardController extends StandardController implements KeyListener {
@@ -34,25 +40,24 @@ public class AWTKeyboardController extends StandardController implements KeyList
 
     static {
         DEF_CONTROLLER_0_MAPPING = new KeyMapping();
-
-        DEF_CONTROLLER_0_MAPPING.put(PADstart, KeyEvent.VK_SPACE);
-        DEF_CONTROLLER_0_MAPPING.put(PADselect, KeyEvent.VK_S);
-        DEF_CONTROLLER_0_MAPPING.put(PADLup, KeyEvent.VK_UP);
-        DEF_CONTROLLER_0_MAPPING.put(PADLleft, KeyEvent.VK_LEFT);
-        DEF_CONTROLLER_0_MAPPING.put(PADLright, KeyEvent.VK_RIGHT);
-        DEF_CONTROLLER_0_MAPPING.put(PADLdown, KeyEvent.VK_DOWN);
-        DEF_CONTROLLER_0_MAPPING.put(PADRup, KeyEvent.VK_8);
-        DEF_CONTROLLER_0_MAPPING.put(PADRup, KeyEvent.VK_KP_UP);
-        DEF_CONTROLLER_0_MAPPING.put(PADRdown, KeyEvent.VK_K);
-        DEF_CONTROLLER_0_MAPPING.put(PADRleft, KeyEvent.VK_KP_LEFT);
-        DEF_CONTROLLER_0_MAPPING.put(PADRright, KeyEvent.VK_I);
-        DEF_CONTROLLER_0_MAPPING.put(PADRright, KeyEvent.VK_KP_RIGHT);
-        DEF_CONTROLLER_0_MAPPING.put(PADRdown, KeyEvent.VK_KP_DOWN);
-        DEF_CONTROLLER_0_MAPPING.put(PADRleft, KeyEvent.VK_U);
-        DEF_CONTROLLER_0_MAPPING.put(PADL1, KeyEvent.VK_1);
-        DEF_CONTROLLER_0_MAPPING.put(PADL2, KeyEvent.VK_Q);
-        DEF_CONTROLLER_0_MAPPING.put(PADR1, KeyEvent.VK_2);
-        DEF_CONTROLLER_0_MAPPING.put(PADR2, KeyEvent.VK_W);
+        KeyboardInputHelper.init();
+        Map<JoypadButton, Integer> p1Map = keyboardBindings.row(InputProvider.PlayerNumber.P1);
+        DEF_CONTROLLER_0_MAPPING.put(PADstart, p1Map.get(S));
+        DEF_CONTROLLER_0_MAPPING.put(PADselect, p1Map.get(SELECT));
+        DEF_CONTROLLER_0_MAPPING.put(PADLup, p1Map.get(U));
+        DEF_CONTROLLER_0_MAPPING.put(PADLleft, p1Map.get(L));
+        DEF_CONTROLLER_0_MAPPING.put(PADLright, p1Map.get(R));
+        DEF_CONTROLLER_0_MAPPING.put(PADLdown, p1Map.get(D));
+        DEF_CONTROLLER_0_MAPPING.put(PADRup, p1Map.get(TRIANGLE));
+        DEF_CONTROLLER_0_MAPPING.put(PADRdown, p1Map.get(CROSS));
+        DEF_CONTROLLER_0_MAPPING.put(PADRleft, p1Map.get(SQUARE));
+        DEF_CONTROLLER_0_MAPPING.put(PADRright, p1Map.get(CIRCLE));
+        DEF_CONTROLLER_0_MAPPING.put(PADRdown, KeyEvent.VK_KP_DOWN); //TODO
+        DEF_CONTROLLER_0_MAPPING.put(PADRleft, KeyEvent.VK_U); //TODO
+        DEF_CONTROLLER_0_MAPPING.put(PADL1, p1Map.get(L1));
+        DEF_CONTROLLER_0_MAPPING.put(PADL2, p1Map.get(R2));
+        DEF_CONTROLLER_0_MAPPING.put(PADR1, p1Map.get(R1));
+        DEF_CONTROLLER_0_MAPPING.put(PADR2, p1Map.get(R2));
     }
 
     public static class KeyMapping {

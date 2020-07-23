@@ -1,4 +1,4 @@
-package org.jpsx.runtime.ui;
+package org.jpsx.runtime.util;
 
 import java.util.EnumSet;
 

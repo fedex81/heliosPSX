@@ -20,7 +20,6 @@
 package org.jpsx.runtime.util;
 
 import org.apache.log4j.Logger;
-import org.jpsx.runtime.ui.SystemProvider;
 
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
